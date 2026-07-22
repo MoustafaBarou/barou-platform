@@ -1,6 +1,6 @@
 # Barou Platform
 
-A production-grade DevOps homelab built from scratch to master Infrastructure as Code, automation, containers, Kubernetes, CI/CD and GitOps.
+Production-inspired DevOps homelab showcasing Infrastructure as Code, Kubernetes, GitOps, observability and Azure automation.
 
 ---
 
