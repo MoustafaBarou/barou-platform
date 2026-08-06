@@ -35,6 +35,10 @@ resource "proxmox_virtual_environment_vm" "ubuntu_tf_01" {
 
     user_account {
       username = var.cloud_init_username
+
+      keys = [
+        trimspace(file(pathexpand(var.ssh_public_key_path)))
+      ]
     }
   }
 
