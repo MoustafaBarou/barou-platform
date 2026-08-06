@@ -1,0 +1,13 @@
+proxmox_node_name = "pve"
+template_vm_id    = 9000
+
+vm_id          = 103
+vm_name        = "ubuntu-tf-01"
+vm_description = "Ubuntu VM managed by Terraform"
+
+cpu_cores = 2
+memory_mb = 2048
+
+network_bridge    = "vmbr0"
+datastore_id      = "local-lvm"
+cloud_init_username = "moustafa"
