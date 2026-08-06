@@ -57,3 +57,9 @@ variable "cloud_init_username" {
   type        = string
   default     = "moustafa"
 }
+
+variable "ssh_public_key_path" {
+  description = "Local path to the SSH public key added to the VM through Cloud-Init."
+  type        = string
+  default     = "~/.ssh/id_ed25519.pub"
+}
