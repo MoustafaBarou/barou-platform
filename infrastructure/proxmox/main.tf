@@ -1,31 +1,31 @@
 resource "proxmox_virtual_environment_vm" "ubuntu_tf_01" {
-  name      = "ubuntu-tf-01"
-  node_name = "pve"
-  vm_id     = 103
+  name      = var.vm_name
+  node_name = var.proxmox_node_name
+  vm_id     = var.vm_id
 
-  description = "Ubuntu VM managed by Terraform"
+  description = var.vm_description
 
   clone {
-    vm_id = 9000
+    vm_id = var.template_vm_id
     full  = true
   }
 
   cpu {
-    cores = 2
+    cores = var.cpu_cores
     type  = "host"
   }
 
   memory {
-    dedicated = 2048
+    dedicated = var.memory_mb
   }
 
   network_device {
-    bridge = "vmbr0"
+    bridge = var.network_bridge
     model  = "virtio"
   }
 
   initialization {
-    datastore_id = "local-lvm"
+    datastore_id = var.datastore_id
 
     ip_config {
       ipv4 {
@@ -34,7 +34,7 @@ resource "proxmox_virtual_environment_vm" "ubuntu_tf_01" {
     }
 
     user_account {
-      username = "moustafa"
+      username = var.cloud_init_username
     }
   }
 
