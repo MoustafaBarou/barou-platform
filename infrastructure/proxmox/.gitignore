@@ -6,6 +6,7 @@
 *.tfstate.*
 
 # Saved Terraform plans
+tf
 tfplan
 *.tfplan
 
@@ -16,6 +17,9 @@ crash.*.log
 # Variable files may contain secrets
 *.tfvars
 *.tfvars.json
+
+# Keep example variable files in Git
+!*.tfvars.example
 
 # Local override files
 override.tf
