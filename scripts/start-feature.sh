@@ -18,6 +18,19 @@ if [[ -n "$(git status --porcelain)" ]]; then
   exit 1
 fi
 
+if git show-ref --verify --quiet "refs/heads/${BRANCH_NAME}"; then
+  echo "Error: local branch '${BRANCH_NAME}' already exists."
+  echo "Switch to it with:"
+  echo "  git switch ${BRANCH_NAME}"
+  exit 1
+fi
+
+if git ls-remote --exit-code --heads origin "${BRANCH_NAME}" >/dev/null 2>&1; then
+  echo "Error: remote branch '${BRANCH_NAME}' already exists."
+  echo "Fetch it first instead of creating a duplicate."
+  exit 1
+fi
+
 echo "Switching to ${MAIN_BRANCH}..."
 git switch "${MAIN_BRANCH}"
 
