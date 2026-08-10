@@ -130,3 +130,49 @@ gh pr checks "${PR_NUMBER}" --watch
 echo
 echo "Submission completed successfully."
 echo "Pull request #${PR_NUMBER} passed all CI checks."
+
+echo
+echo "Watching CI checks..."
+
+gh pr checks "${PR_NUMBER}" --watch
+
+echo
+echo "Waiting for pull request to be merged..."
+
+while true; do
+  PR_STATE="$(
+    gh pr view "${PR_NUMBER}" \
+      --json state \
+      --jq '.state'
+  )"
+
+  if [[ "${PR_STATE}" == "MERGED" ]]; then
+    break
+  fi
+
+  if [[ "${PR_STATE}" == "CLOSED" ]]; then
+    echo "Error: pull request was closed without being merged."
+    exit 1
+  fi
+
+  sleep 5
+done
+
+echo
+echo "Pull request #${PR_NUMBER} merged successfully."
+
+echo
+echo "Running post-merge cleanup..."
+
+git switch "${MAIN_BRANCH}"
+git pull --ff-only
+git fetch --prune
+
+if git show-ref --verify --quiet "refs/heads/${CURRENT_BRANCH}"; then
+  git branch -d "${CURRENT_BRANCH}"
+fi
+
+echo
+echo "Submission and cleanup completed successfully."
+
+git status
