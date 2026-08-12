@@ -1,0 +1,3 @@
+---
+security_ufw_default_policy: deny
+security_ufw_ssh_profile: OpenSSH

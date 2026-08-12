@@ -1,0 +1,15 @@
+---
+- name: Ensure UFW is installed
+  ansible.builtin.apt:
+    name: ufw
+    state: present
+
+- name: Allow SSH through UFW
+  community.general.ufw:
+    rule: allow
+    name: "{{ security_ufw_ssh_profile }}"
+
+- name: Enable UFW
+  community.general.ufw:
+    state: enabled
+    policy: deny
