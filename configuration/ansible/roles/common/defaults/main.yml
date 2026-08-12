@@ -1,4 +1,6 @@
 ---
+common_timezone: Europe/Amsterdam
+
 common_apt_cache_valid_time: 3600
 
 common_packages:
@@ -6,3 +8,10 @@ common_packages:
   - git
   - htop
   - unzip
+  - vim
+  - jq
+  - ca-certificates
+  - gnupg
+  - apt-transport-https
+
+common_unattended_upgrades_enabled: true
