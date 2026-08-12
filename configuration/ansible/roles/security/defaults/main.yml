@@ -1,3 +1,6 @@
 ---
-security_ufw_default_policy: deny
 security_ufw_ssh_profile: OpenSSH
+
+security_sshd_password_authentication: "no"
+security_sshd_permit_root_login: "no"
+security_sshd_pubkey_authentication: "yes"
