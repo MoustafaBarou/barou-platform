@@ -4,3 +4,11 @@ security_ufw_ssh_profile: OpenSSH
 security_sshd_password_authentication: "no"
 security_sshd_permit_root_login: "no"
 security_sshd_pubkey_authentication: "yes"
+
+security_sshd_permit_empty_passwords: "no"
+security_sshd_x11_forwarding: "no"
+security_sshd_max_auth_tries: 3
+security_sshd_client_alive_interval: 300
+security_sshd_client_alive_count_max: 2
+
+security_ufw_logging: low

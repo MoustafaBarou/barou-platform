@@ -1,0 +1,28 @@
+---
+- name: Ensure UFW is installed
+  ansible.builtin.apt:
+    name: ufw
+    state: present
+
+- name: Allow SSH through UFW
+  community.general.ufw:
+    rule: allow
+    name: "{{ security_ufw_ssh_profile }}"
+
+- name: Configure UFW logging
+  community.general.ufw:
+    logging: "{{ security_ufw_logging }}"
+
+- name: Configure UFW default incoming policy
+  community.general.ufw:
+    direction: incoming
+    policy: deny
+
+- name: Configure UFW default outgoing policy
+  community.general.ufw:
+    direction: outgoing
+    policy: allow
+
+- name: Enable UFW
+  community.general.ufw:
+    state: enabled
