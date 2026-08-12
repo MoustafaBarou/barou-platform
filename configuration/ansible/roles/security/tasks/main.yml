@@ -1,39 +1,6 @@
 ---
-- name: Ensure UFW is installed
-  ansible.builtin.apt:
-    name: ufw
-    state: present
+- name: Configure firewall
+  ansible.builtin.import_tasks: firewall.yml
 
-- name: Allow SSH through UFW
-  community.general.ufw:
-    rule: allow
-    name: "{{ security_ufw_ssh_profile }}"
-
-- name: Enable UFW
-  community.general.ufw:
-    state: enabled
-    policy: deny
-
-- name: Disable SSH password authentication
-  ansible.builtin.lineinfile:
-    path: /etc/ssh/sshd_config
-    regexp: '^#?PasswordAuthentication'
-    line: "PasswordAuthentication {{ security_sshd_password_authentication }}"
-    validate: '/usr/sbin/sshd -t -f %s'
-  notify: Restart SSH
-
-- name: Disable SSH root login
-  ansible.builtin.lineinfile:
-    path: /etc/ssh/sshd_config
-    regexp: '^#?PermitRootLogin'
-    line: "PermitRootLogin {{ security_sshd_permit_root_login }}"
-    validate: '/usr/sbin/sshd -t -f %s'
-  notify: Restart SSH
-
-- name: Ensure SSH public key authentication is enabled
-  ansible.builtin.lineinfile:
-    path: /etc/ssh/sshd_config
-    regexp: '^#?PubkeyAuthentication'
-    line: "PubkeyAuthentication {{ security_sshd_pubkey_authentication }}"
-    validate: '/usr/sbin/sshd -t -f %s'
-  notify: Restart SSH
+- name: Harden SSH
+  ansible.builtin.import_tasks: ssh.yml
