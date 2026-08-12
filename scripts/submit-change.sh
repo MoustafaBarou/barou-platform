@@ -169,7 +169,8 @@ git pull --ff-only
 git fetch --prune
 
 if git show-ref --verify --quiet "refs/heads/${CURRENT_BRANCH}"; then
-  git branch -d "${CURRENT_BRANCH}"
+  echo "Removing local feature branch ${CURRENT_BRANCH}..."
+  git branch -D "${CURRENT_BRANCH}"
 fi
 
 echo
