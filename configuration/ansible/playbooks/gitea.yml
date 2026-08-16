@@ -1,0 +1,10 @@
+---
+- name: Deploy Gitea platform service
+  hosts: gitea_servers
+  become: true
+
+  vars:
+    gitea_db_password: "{{ lookup('env', 'GITEA_DB_PASSWORD') }}"
+
+  roles:
+    - gitea

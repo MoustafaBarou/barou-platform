@@ -1,0 +1,58 @@
+---
+- name: Create Gitea base directory
+  ansible.builtin.file:
+    path: "{{ gitea_base_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+- name: Create Gitea data directory
+  ansible.builtin.file:
+    path: "{{ gitea_base_dir }}/data"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+- name: Deploy Gitea Docker Compose definition
+  ansible.builtin.template:
+    src: compose.yml.j2
+    dest: "{{ gitea_base_dir }}/compose.yml"
+    owner: root
+    group: root
+    mode: "0644"
+- name: Start Gitea stack
+  ansible.builtin.command:
+    cmd: docker compose up -d
+    chdir: "{{ gitea_base_dir }}"
+  register: gitea_compose_up
+  changed_when: >
+    'Creating' in gitea_compose_up.stderr or
+    'Created' in gitea_compose_up.stderr or
+    'Starting' in gitea_compose_up.stderr or
+    'Started' in gitea_compose_up.stderr or
+    'Recreating' in gitea_compose_up.stderr or
+    'Recreated' in gitea_compose_up.stderr
+- name: Wait for PostgreSQL to become ready
+  ansible.builtin.command:
+    cmd: >
+      docker exec {{ gitea_postgres_container_name }}
+      pg_isready
+      -U {{ gitea_db_user }}
+      -d {{ gitea_db_name }}
+  register: gitea_postgres_health
+  changed_when: false
+  retries: 10
+  delay: 3
+  until: gitea_postgres_health.rc == 0
+- name: Wait for Gitea HTTP endpoint
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ gitea_http_port }}/"
+    method: GET
+    status_code:
+      - 200
+      - 302
+    return_content: false
+  register: gitea_http_health
+  retries: 10
+  delay: 3
+  until: gitea_http_health.status in [200, 302]
