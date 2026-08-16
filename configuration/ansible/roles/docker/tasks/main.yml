@@ -32,7 +32,7 @@
     uris:
       - https://download.docker.com/linux/ubuntu
     suites:
-      - "{{ ansible_distribution_release }}"
+      - "{{ ansible_facts['distribution_release'] }}"
     components:
       - "{{ docker_apt_channel }}"
     architectures:

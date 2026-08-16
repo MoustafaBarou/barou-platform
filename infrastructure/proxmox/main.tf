@@ -1,50 +1,21 @@
-resource "proxmox_virtual_environment_vm" "ubuntu_tf_01" {
-  name      = var.vm_name
-  node_name = var.proxmox_node_name
-  vm_id     = var.vm_id
+module "ubuntu_vm" {
+  for_each = var.virtual_machines
 
-  description = var.vm_description
+  source = "./modules/ubuntu-vm"
 
-  clone {
-    vm_id = var.template_vm_id
-    full  = true
-  }
+  proxmox_node_name = var.proxmox_node_name
+  template_vm_id    = var.template_vm_id
 
-  cpu {
-    cores = var.cpu_cores
-    type  = "host"
-  }
+  vm_id          = each.value.vm_id
+  vm_name        = each.key
+  vm_description = each.value.description
+  cpu_cores      = each.value.cpu_cores
+  memory_mb      = each.value.memory_mb
 
-  memory {
-    dedicated = var.memory_mb
-  }
-
-  network_device {
-    bridge = var.network_bridge
-    model  = "virtio"
-  }
-
-  initialization {
-    datastore_id = var.datastore_id
-
-    ip_config {
-      ipv4 {
-        address = "dhcp"
-      }
-    }
-
-    user_account {
-      username = var.cloud_init_username
-
-      keys = [
-        trimspace(file(pathexpand(var.ssh_public_key_path)))
-      ]
-    }
-  }
-
-  agent {
-    enabled = true
-  }
-
-  started = true
+  network_bridge      = var.network_bridge
+  datastore_id        = var.datastore_id
+  cloud_init_username = var.cloud_init_username
+  ssh_public_key_path = var.ssh_public_key_path
 }
+
+
