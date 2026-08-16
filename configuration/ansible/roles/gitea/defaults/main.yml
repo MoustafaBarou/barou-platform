@@ -1,0 +1,16 @@
+---
+gitea_base_dir: /opt/gitea
+
+gitea_http_port: 3000
+gitea_ssh_port: 2222
+
+gitea_image: docker.gitea.com/gitea:latest
+gitea_postgres_image: postgres:16-alpine
+
+gitea_db_name: gitea
+gitea_db_user: gitea
+
+gitea_container_name: gitea
+gitea_postgres_container_name: gitea-postgres
+
+gitea_timezone: Europe/Amsterdam
