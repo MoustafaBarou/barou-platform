@@ -1,0 +1,33 @@
+---
+- name: Create Jenkins base directory
+  ansible.builtin.file:
+    path: "{{ jenkins_base_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+- name: Deploy Jenkins Docker Compose definition
+  ansible.builtin.template:
+    src: compose.yml.j2
+    dest: "{{ jenkins_base_dir }}/compose.yml"
+    owner: root
+    group: root
+    mode: "0644"
+- name: Start Jenkins stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ jenkins_base_dir }}"
+    files:
+      - compose.yml
+    state: present
+- name: Wait for Jenkins HTTP endpoint
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ jenkins_http_port }}/login"
+    method: GET
+    status_code:
+      - 200
+      - 403
+    return_content: false
+  register: jenkins_http_health
+  retries: 30
+  delay: 5
+  until: jenkins_http_health.status in [200, 403]

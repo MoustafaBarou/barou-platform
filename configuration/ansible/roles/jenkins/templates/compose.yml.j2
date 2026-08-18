@@ -1,0 +1,21 @@
+---
+services:
+  jenkins:
+    image: "{{ jenkins_image }}"
+    container_name: "{{ jenkins_container_name }}"
+    restart: unless-stopped
+    environment:
+      TZ: "{{ jenkins_timezone }}"
+    ports:
+      - "{{ jenkins_http_port }}:8080"
+      - "{{ jenkins_agent_port }}:50000"
+    volumes:
+      - jenkins-home:/var/jenkins_home
+
+networks:
+  default:
+    name: jenkins
+
+volumes:
+  jenkins-home:
+    name: jenkins-home

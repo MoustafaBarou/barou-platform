@@ -1,0 +1,6 @@
+---
+- name: Deploy Jenkins platform service
+  hosts: jenkins_servers
+  become: true
+  roles:
+    - jenkins
