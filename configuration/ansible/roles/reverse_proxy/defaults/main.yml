@@ -1,0 +1,15 @@
+---
+reverse_proxy_listen_address: 192.168.178.106
+
+reverse_proxy_sites:
+  - hostname: gitea.lab.barouconsulting.nl
+    upstream: http://192.168.178.104:3000
+    tls_insecure_skip_verify: false
+
+  - hostname: jenkins.lab.barouconsulting.nl
+    upstream: http://192.168.178.105:8080
+    tls_insecure_skip_verify: false
+
+  - hostname: proxmox.lab.barouconsulting.nl
+    upstream: https://192.168.178.10:8006
+    tls_insecure_skip_verify: true

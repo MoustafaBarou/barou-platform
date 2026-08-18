@@ -1,0 +1,54 @@
+---
+- name: Install internal DNS packages
+  ansible.builtin.apt:
+    name:
+      - dnsmasq
+      - dnsutils
+    state: present
+    update_cache: true
+
+- name: Deploy internal DNS configuration
+  ansible.builtin.template:
+    src: internal-dns.conf.j2
+    dest: /etc/dnsmasq.d/internal-dns.conf
+    owner: root
+    group: root
+    mode: "0644"
+    validate: "dnsmasq --test --conf-file=%s"
+  notify: Restart dnsmasq
+
+- name: Ensure dnsmasq is enabled and running
+  ansible.builtin.systemd_service:
+    name: dnsmasq
+    state: started
+    enabled: true
+
+- name: Allow DNS UDP from Tailscale
+  community.general.ufw:
+    rule: allow
+    interface_in: tailscale0
+    port: "53"
+    proto: udp
+
+- name: Allow DNS TCP from Tailscale
+  community.general.ufw:
+    rule: allow
+    interface_in: tailscale0
+    port: "53"
+    proto: tcp
+
+- name: Allow DNS UDP from homelab LAN
+  community.general.ufw:
+    rule: allow
+    interface_in: eth0
+    from_ip: 192.168.178.0/24
+    port: "53"
+    proto: udp
+
+- name: Allow DNS TCP from homelab LAN
+  community.general.ufw:
+    rule: allow
+    interface_in: eth0
+    from_ip: 192.168.178.0/24
+    port: "53"
+    proto: tcp

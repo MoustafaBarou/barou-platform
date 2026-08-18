@@ -1,0 +1,10 @@
+---
+tailscale_router_advertise_routes:
+  - 192.168.178.0/24
+
+tailscale_router_ipv4_forwarding: true
+tailscale_router_ipv6_forwarding: true
+
+tailscale_router_interface: tailscale0
+tailscale_router_lan_interface: eth0
+tailscale_router_lan_subnet: 192.168.178.0/24
