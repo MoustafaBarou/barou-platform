@@ -1,0 +1,11 @@
+---
+- name: Configure management gateway
+  hosts: mgmt_servers
+  become: true
+
+  roles:
+    - common
+    - security
+    - tailscale_router
+    - internal_dns
+    - reverse_proxy

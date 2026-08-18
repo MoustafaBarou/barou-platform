@@ -1,0 +1,24 @@
+---
+internal_dns_domain: lab.barouconsulting.nl
+
+internal_dns_listen_addresses:
+  - 127.0.0.1
+  - 192.168.178.106
+  - 100.72.132.51
+
+internal_dns_upstream_servers:
+  - 1.1.1.1
+  - 9.9.9.9
+
+internal_dns_records:
+  - name: mgmt
+    address: 192.168.178.106
+
+  - name: gitea
+    address: 192.168.178.106
+
+  - name: jenkins
+    address: 192.168.178.106
+
+  - name: proxmox
+    address: 192.168.178.106

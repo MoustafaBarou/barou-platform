@@ -1,11 +1,11 @@
 variable "proxmox_node_name" {
-  description = "Name of the Proxmox node where virtual machines are created."
+  description = "Proxmox node where virtual machines are deployed."
   type        = string
   default     = "pve"
 }
 
 variable "template_vm_id" {
-  description = "VM ID of the Ubuntu Cloud-Init template."
+  description = "Proxmox VM ID of the Ubuntu Cloud-Init template."
   type        = number
   default     = 9000
 }
@@ -64,6 +64,13 @@ variable "virtual_machines" {
       description = "CI automation server managed by Terraform"
       cpu_cores   = 2
       memory_mb   = 3072
+    }
+
+    mgmt-01 = {
+      vm_id       = 106
+      description = "Management gateway for secure remote access and internal platform services"
+      cpu_cores   = 1
+      memory_mb   = 1536
     }
   }
 }

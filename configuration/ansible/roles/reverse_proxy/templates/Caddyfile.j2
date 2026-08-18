@@ -1,0 +1,13 @@
+{% for site in reverse_proxy_sites %}
+{{ site.hostname }} {
+  tls internal
+
+  reverse_proxy {{ site.upstream }} {
+{% if site.tls_insecure_skip_verify %}
+    transport http {
+      tls_insecure_skip_verify
+    }
+{% endif %}
+  }
+}
+{% endfor %}

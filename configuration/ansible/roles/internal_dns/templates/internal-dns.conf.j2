@@ -1,0 +1,22 @@
+domain-needed
+bogus-priv
+no-resolv
+
+{% for server in internal_dns_upstream_servers %}
+server={{ server }}
+{% endfor %}
+
+{% for address in internal_dns_listen_addresses %}
+listen-address={{ address }}
+{% endfor %}
+
+bind-dynamic
+
+domain={{ internal_dns_domain }}
+local=/{{ internal_dns_domain }}/
+
+{% for record in internal_dns_records %}
+address=/{{ record.name }}.{{ internal_dns_domain }}/{{ record.address }}
+{% endfor %}
+
+cache-size=1000
