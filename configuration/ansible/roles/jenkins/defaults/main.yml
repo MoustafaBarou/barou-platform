@@ -1,0 +1,10 @@
+---
+jenkins_base_dir: /opt/jenkins
+
+jenkins_http_port: 8080
+jenkins_agent_port: 50000
+
+jenkins_image: jenkins/jenkins:lts-jdk21
+
+jenkins_container_name: jenkins
+jenkins_timezone: Europe/Amsterdam
