@@ -1,0 +1,21 @@
+---
+- name: Configure Kubernetes cluster firewall
+  hosts: k8s_cluster
+  become: true
+
+  roles:
+    - rke2_firewall
+
+- name: Configure RKE2 control plane
+  hosts: k8s_control_plane
+  become: true
+
+  roles:
+    - rke2_server
+
+- name: Configure RKE2 workers
+  hosts: k8s_workers
+  become: true
+
+  roles:
+    - rke2_agent

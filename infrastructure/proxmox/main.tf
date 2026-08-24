@@ -16,6 +16,7 @@ module "ubuntu_vm" {
   datastore_id        = var.datastore_id
   cloud_init_username = var.cloud_init_username
   ssh_public_key_path = var.ssh_public_key_path
+
+  ipv4_address = try(each.value.ipv4_address, "dhcp")
+  ipv4_gateway = try(each.value.ipv4_gateway, null)
 }
-
-

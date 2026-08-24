@@ -52,3 +52,15 @@ variable "ssh_public_key_path" {
   description = "Local path to the SSH public key added through Cloud-Init."
   type        = string
 }
+
+variable "ipv4_address" {
+  description = "IPv4 address configured through Cloud-Init. Use dhcp for dynamic addressing."
+  type        = string
+  default     = "dhcp"
+}
+
+variable "ipv4_gateway" {
+  description = "IPv4 gateway configured through Cloud-Init. Leave null when DHCP is used."
+  type        = string
+  default     = null
+}

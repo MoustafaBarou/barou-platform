@@ -1,0 +1,18 @@
+---
+rke2_server_channel: stable
+
+rke2_server_config_dir: /etc/rancher/rke2
+rke2_server_data_dir: /var/lib/rancher/rke2
+
+rke2_server_node_ip: "{{ ansible_host }}"
+rke2_server_cni: cilium
+
+rke2_server_cluster_cidr: 10.42.0.0/16
+rke2_server_service_cidr: 10.43.0.0/16
+rke2_server_cluster_domain: cluster.local
+
+rke2_server_write_kubeconfig_mode: "0640"
+
+rke2_server_tls_sans:
+  - "{{ inventory_hostname }}"
+  - "{{ ansible_host }}"

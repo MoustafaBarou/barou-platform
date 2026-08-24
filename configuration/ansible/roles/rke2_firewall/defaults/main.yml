@@ -1,0 +1,35 @@
+---
+rke2_firewall_control_plane_ip: "{{ hostvars[groups['k8s_control_plane'][0]].ansible_host }}"
+
+rke2_firewall_worker_ips: >-
+  {{
+    groups['k8s_workers']
+    | map('extract', hostvars, 'ansible_host')
+    | list
+  }}
+
+rke2_firewall_node_ips: >-
+  {{
+    groups['k8s_cluster']
+    | map('extract', hostvars, 'ansible_host')
+    | list
+  }}
+
+rke2_firewall_pod_cidr: 10.42.0.0/16
+
+rke2_firewall_server_tcp_ports:
+  - 6443
+  - 9345
+
+rke2_firewall_node_tcp_ports:
+  - 10250
+  - 4240
+
+rke2_firewall_node_udp_ports:
+  - 8472
+
+rke2_firewall_pod_to_control_plane_tcp_ports:
+  - 6443
+
+rke2_firewall_pod_to_node_tcp_ports:
+  - 10250

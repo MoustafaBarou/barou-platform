@@ -38,10 +38,12 @@ variable "virtual_machines" {
   description = "Ubuntu virtual machines managed by Terraform."
 
   type = map(object({
-    vm_id       = number
-    description = string
-    cpu_cores   = number
-    memory_mb   = number
+    vm_id        = number
+    description  = string
+    cpu_cores    = number
+    memory_mb    = number
+    ipv4_address = optional(string, "dhcp")
+    ipv4_gateway = optional(string)
   }))
 
   default = {
@@ -71,6 +73,24 @@ variable "virtual_machines" {
       description = "Management gateway for secure remote access and internal platform services"
       cpu_cores   = 1
       memory_mb   = 1536
+    }
+
+    k8s-cp-01 = {
+      vm_id        = 110
+      description  = "RKE2 Kubernetes control plane node"
+      cpu_cores    = 2
+      memory_mb    = 3072
+      ipv4_address = "192.168.178.110/24"
+      ipv4_gateway = "192.168.178.1"
+    }
+
+    k8s-worker-01 = {
+      vm_id        = 111
+      description  = "RKE2 Kubernetes worker node"
+      cpu_cores    = 2
+      memory_mb    = 2048
+      ipv4_address = "192.168.178.111/24"
+      ipv4_gateway = "192.168.178.1"
     }
   }
 }

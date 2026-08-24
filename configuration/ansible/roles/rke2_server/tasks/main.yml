@@ -1,0 +1,78 @@
+---
+- name: Install RKE2 prerequisites
+  ansible.builtin.apt:
+    name:
+      - curl
+      - ca-certificates
+      - apparmor
+      - apparmor-utils
+    state: present
+    update_cache: true
+
+- name: Create RKE2 configuration directory
+  ansible.builtin.file:
+    path: "{{ rke2_server_config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Download RKE2 installer
+  ansible.builtin.get_url:
+    url: https://get.rke2.io
+    dest: /usr/local/src/install-rke2.sh
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Check whether RKE2 server is already installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/rke2
+  register: rke2_server_binary
+
+- name: Install RKE2 server
+  ansible.builtin.command:
+    cmd: /usr/local/src/install-rke2.sh
+  environment:
+    INSTALL_RKE2_TYPE: server
+    INSTALL_RKE2_CHANNEL: "{{ rke2_server_channel }}"
+  when: not rke2_server_binary.stat.exists
+  changed_when: true
+
+- name: Deploy RKE2 server configuration
+  ansible.builtin.template:
+    src: config.yaml.j2
+    dest: "{{ rke2_server_config_dir }}/config.yaml"
+    owner: root
+    group: root
+    mode: "0600"
+  notify: Restart rke2-server
+
+- name: Enable and start RKE2 server
+  ansible.builtin.service:
+    name: rke2-server
+    enabled: true
+    state: started
+
+- name: Wait for Kubernetes API port
+  ansible.builtin.wait_for:
+    host: "{{ rke2_server_node_ip }}"
+    port: 6443
+    timeout: 300
+
+- name: Wait for RKE2 supervisor port
+  ansible.builtin.wait_for:
+    host: "{{ rke2_server_node_ip }}"
+    port: 9345
+    timeout: 300
+
+- name: Read RKE2 node token
+  ansible.builtin.slurp:
+    src: "{{ rke2_server_data_dir }}/server/node-token"
+  register: rke2_server_node_token
+  no_log: true
+
+- name: Store RKE2 node token for agent configuration
+  ansible.builtin.set_fact:
+    rke2_server_cluster_token: "{{ rke2_server_node_token.content | b64decode | trim }}"
+  no_log: true
