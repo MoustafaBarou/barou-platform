@@ -1,0 +1,15 @@
+node-name: "{{ inventory_hostname }}"
+node-ip: "{{ rke2_server_node_ip }}"
+
+cni: "{{ rke2_server_cni }}"
+
+cluster-cidr: "{{ rke2_server_cluster_cidr }}"
+service-cidr: "{{ rke2_server_service_cidr }}"
+cluster-domain: "{{ rke2_server_cluster_domain }}"
+
+write-kubeconfig-mode: "{{ rke2_server_write_kubeconfig_mode }}"
+
+tls-san:
+{% for san in rke2_server_tls_sans %}
+  - "{{ san }}"
+{% endfor %}

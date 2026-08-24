@@ -1,0 +1,5 @@
+server: "{{ rke2_agent_server_url }}"
+token: "{{ hostvars[groups['k8s_control_plane'][0]].rke2_server_cluster_token }}"
+
+node-name: "{{ inventory_hostname }}"
+node-ip: "{{ rke2_agent_node_ip }}"

@@ -1,0 +1,44 @@
+---
+- name: Allow RKE2 server ports from worker nodes
+  community.general.ufw:
+    rule: allow
+    proto: tcp
+    src: "{{ item.0 }}"
+    port: "{{ item.1 }}"
+  loop: "{{ rke2_firewall_worker_ips | product(rke2_firewall_server_tcp_ports) | list }}"
+  when: inventory_hostname in groups['k8s_control_plane']
+
+- name: Allow RKE2 node TCP communication
+  community.general.ufw:
+    rule: allow
+    proto: tcp
+    src: "{{ item.0 }}"
+    port: "{{ item.1 }}"
+  loop: "{{ rke2_firewall_node_ips | product(rke2_firewall_node_tcp_ports) | list }}"
+  when: item.0 != ansible_host
+
+- name: Allow Cilium VXLAN communication
+  community.general.ufw:
+    rule: allow
+    proto: udp
+    src: "{{ item }}"
+    port: "8472"
+  loop: "{{ rke2_firewall_node_ips }}"
+  when: item != ansible_host
+
+- name: Allow Kubernetes pods to access the control plane API
+  community.general.ufw:
+    rule: allow
+    proto: tcp
+    src: "{{ rke2_firewall_pod_cidr }}"
+    port: "{{ item }}"
+  loop: "{{ rke2_firewall_pod_to_control_plane_tcp_ports }}"
+  when: inventory_hostname in groups['k8s_control_plane']
+
+- name: Allow Kubernetes pods to access kubelet services
+  community.general.ufw:
+    rule: allow
+    proto: tcp
+    src: "{{ rke2_firewall_pod_cidr }}"
+    port: "{{ item }}"
+  loop: "{{ rke2_firewall_pod_to_node_tcp_ports }}"

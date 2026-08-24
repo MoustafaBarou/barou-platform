@@ -1,0 +1,55 @@
+---
+- name: Install RKE2 agent prerequisites
+  ansible.builtin.apt:
+    name:
+      - curl
+      - ca-certificates
+      - apparmor
+      - apparmor-utils
+    state: present
+    update_cache: true
+
+- name: Create RKE2 configuration directory
+  ansible.builtin.file:
+    path: "{{ rke2_agent_config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Download RKE2 installer
+  ansible.builtin.get_url:
+    url: https://get.rke2.io
+    dest: /usr/local/src/install-rke2.sh
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Check whether RKE2 agent is already installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/rke2
+  register: rke2_agent_binary
+
+- name: Install RKE2 agent
+  ansible.builtin.command:
+    cmd: /usr/local/src/install-rke2.sh
+  environment:
+    INSTALL_RKE2_TYPE: agent
+    INSTALL_RKE2_CHANNEL: "{{ rke2_agent_channel }}"
+  when: not rke2_agent_binary.stat.exists
+  changed_when: true
+
+- name: Deploy RKE2 agent configuration
+  ansible.builtin.template:
+    src: config.yaml.j2
+    dest: "{{ rke2_agent_config_dir }}/config.yaml"
+    owner: root
+    group: root
+    mode: "0600"
+  notify: Restart rke2-agent
+
+- name: Enable and start RKE2 agent
+  ansible.builtin.service:
+    name: rke2-agent
+    enabled: true
+    state: started
