@@ -42,3 +42,21 @@
     src: "{{ rke2_firewall_pod_cidr }}"
     port: "{{ item }}"
   loop: "{{ rke2_firewall_pod_to_node_tcp_ports }}"
+
+- name: Allow administration hosts to access Kubernetes API
+  community.general.ufw:
+    rule: allow
+    proto: tcp
+    src: "{{ item }}"
+    port: "6443"
+  loop: "{{ rke2_firewall_admin_ips }}"
+  when: inventory_hostname in groups['k8s_control_plane']
+
+- name: Allow management reverse proxy to access Kubernetes ingress
+  community.general.ufw:
+    rule: allow
+    proto: tcp
+    src: "{{ rke2_firewall_reverse_proxy_ip }}"
+    port: "{{ item }}"
+  loop: "{{ rke2_firewall_ingress_tcp_ports }}"
+  when: inventory_hostname in groups['k8s_workers']

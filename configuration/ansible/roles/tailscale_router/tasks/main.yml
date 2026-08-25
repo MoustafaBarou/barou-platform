@@ -81,6 +81,7 @@
     cmd: tailscale status --json
   register: tailscale_router_status
   changed_when: false
+  when: not ansible_check_mode
 
 - name: Parse Tailscale backend state
   ansible.builtin.set_fact:
@@ -89,6 +90,7 @@
         (tailscale_router_status.stdout | from_json).BackendState
         | default('Unknown')
       }}
+  when: not ansible_check_mode
 
 - name: Verify Tailscale is authenticated
   ansible.builtin.assert:
@@ -97,6 +99,7 @@
     fail_msg: >-
       Tailscale is not authenticated or running.
       Current BackendState: {{ tailscale_router_backend_state }}
+  when: not ansible_check_mode
 
 - name: Advertise homelab subnet route
   ansible.builtin.command:
@@ -104,3 +107,4 @@
       tailscale set
       --advertise-routes={{ tailscale_router_advertise_routes | join(',') }}
   changed_when: false
+  when: not ansible_check_mode

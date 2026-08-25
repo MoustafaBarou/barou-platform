@@ -22,3 +22,6 @@ internal_dns_records:
 
   - name: proxmox
     address: 192.168.178.106
+
+  - name: rancher
+    address: 192.168.178.106

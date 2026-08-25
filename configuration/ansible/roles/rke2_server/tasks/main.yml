@@ -76,3 +76,11 @@
   ansible.builtin.set_fact:
     rke2_server_cluster_token: "{{ rke2_server_node_token.content | b64decode | trim }}"
   no_log: true
+
+- name: Deploy RKE2 ingress-nginx HelmChartConfig
+  ansible.builtin.template:
+    src: rke2-ingress-nginx-config.yaml.j2
+    dest: /var/lib/rancher/rke2/server/manifests/rke2-ingress-nginx-config.yaml
+    owner: root
+    group: root
+    mode: "0644"
