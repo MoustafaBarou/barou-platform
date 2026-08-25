@@ -13,3 +13,7 @@ reverse_proxy_sites:
   - hostname: proxmox.lab.barouconsulting.nl
     upstream: https://192.168.178.10:8006
     tls_insecure_skip_verify: true
+
+  - hostname: rancher.lab.barouconsulting.nl
+    upstream: http://192.168.178.111:80
+    tls_insecure_skip_verify: false

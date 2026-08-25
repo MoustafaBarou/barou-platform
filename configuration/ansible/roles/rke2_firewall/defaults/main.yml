@@ -33,3 +33,11 @@ rke2_firewall_pod_to_control_plane_tcp_ports:
 
 rke2_firewall_pod_to_node_tcp_ports:
   - 10250
+
+rke2_firewall_admin_ips:
+  - 192.168.178.102
+
+rke2_firewall_reverse_proxy_ip: 192.168.178.106
+
+rke2_firewall_ingress_tcp_ports:
+  - 80
