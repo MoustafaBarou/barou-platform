@@ -84,3 +84,11 @@
     owner: root
     group: root
     mode: "0644"
+
+- name: Deploy RKE2 CoreDNS HelmChartConfig
+  ansible.builtin.template:
+    src: rke2-coredns-config.yaml.j2
+    dest: /var/lib/rancher/rke2/server/manifests/rke2-coredns-config.yaml
+    owner: root
+    group: root
+    mode: "0644"
