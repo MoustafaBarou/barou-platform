@@ -1,0 +1,143 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: homepage-config
+  namespace: homepage
+  labels:
+    app.kubernetes.io/name: homepage
+    app.kubernetes.io/part-of: barou-platform
+
+data:
+  kubernetes.yaml: |
+    mode: cluster
+    ingress: true
+
+  settings.yaml: |
+    title: Barou Platform
+    theme: dark
+    color: slate
+    headerStyle: clean
+    target: _blank
+    disableIndexing: true
+
+    layout:
+      Platform:
+        style: row
+        columns: 3
+
+      DevOps:
+        style: row
+        columns: 3
+
+      Infrastructure:
+        style: row
+        columns: 3
+
+  services.yaml: |
+    - Platform:
+        - Rancher:
+            icon: rancher.png
+            href: https://rancher.lab.barouconsulting.nl
+            description: Kubernetes management platform
+
+        - Kubernetes:
+            icon: kubernetes.png
+            description: RKE2 Kubernetes cluster
+            namespace: kube-system
+            podSelector: app.kubernetes.io/name=rke2-coredns
+
+    - DevOps:
+        - Gitea:
+            icon: gitea.png
+            href: https://gitea.lab.barouconsulting.nl
+            description: Self-hosted Git platform
+            widget:
+              type: gitea
+              url: http://192.168.178.104:3000
+              key: "{{HOMEPAGE_VAR_GITEA_API_TOKEN}}"
+              fields:
+                - repositories
+                - notifications
+                - issues
+                - pulls
+
+        - Jenkins:
+            icon: jenkins.png
+            href: https://jenkins.lab.barouconsulting.nl
+            description: Continuous integration platform
+            widget:
+              type: customapi
+              url: http://192.168.178.105:8080/job/platform-ci-demo/api/json?tree=name,lastBuild%5Bnumber,result,building%5D
+              username: "{{HOMEPAGE_VAR_JENKINS_USERNAME}}"
+              password: "{{HOMEPAGE_VAR_JENKINS_API_TOKEN}}"
+              refreshInterval: 10000
+              mappings:
+                - field: name
+                  label: Job
+                  format: text
+
+                - field: lastBuild.result
+                  label: Status
+                  format: text
+
+                - field: lastBuild.number
+                  label: Build
+                  format: number
+
+                - field: lastBuild.building
+                  label: Running
+                  format: text
+                  remap:
+                    - value: true
+                      to: "Yes"
+                    - value: false
+                      to: "No"
+
+    - Infrastructure:
+        - Proxmox:
+            icon: proxmox.png
+            href: https://proxmox.lab.barouconsulting.nl
+            description: Virtualization platform
+            widget:
+              type: proxmox
+              url: https://192.168.178.10:8006
+              username: "{{HOMEPAGE_VAR_PROXMOX_TOKEN_ID}}"
+              password: "{{HOMEPAGE_VAR_PROXMOX_TOKEN_SECRET}}"
+              node: pve
+              fields:
+                - vms
+                - lxc
+                - resources.cpu
+                - resources.mem
+
+  widgets.yaml: |
+    - kubernetes:
+        cluster:
+          show: true
+          cpu: true
+          memory: true
+          showLabel: true
+          label: Barou Platform
+
+        nodes:
+          show: true
+          cpu: true
+          memory: true
+          showLabel: true
+
+    - datetime:
+        text_size: xl
+        format:
+          dateStyle: long
+          timeStyle: short
+
+  bookmarks.yaml: |
+    - Documentation:
+        - GitHub Repository:
+            - icon: github.png
+              href: https://github.com/MoustafaBarou/barou-platform
+
+  docker.yaml: ""
+
+  proxmox.yaml: ""

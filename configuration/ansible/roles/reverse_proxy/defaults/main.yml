@@ -17,3 +17,7 @@ reverse_proxy_sites:
   - hostname: rancher.lab.barouconsulting.nl
     upstream: http://192.168.178.111:80
     tls_insecure_skip_verify: false
+
+  - hostname: platform.lab.barouconsulting.nl
+    upstream: http://192.168.178.111:80
+    tls_insecure_skip_verify: false

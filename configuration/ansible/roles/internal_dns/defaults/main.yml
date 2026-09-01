@@ -25,3 +25,6 @@ internal_dns_records:
 
   - name: rancher
     address: 192.168.178.106
+
+  - name: platform
+    address: 192.168.178.106
