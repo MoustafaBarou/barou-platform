@@ -1,0 +1,89 @@
+---
+name: barou-platform-ci-$(Date:yyyyMMdd)$(Rev:.r)
+
+trigger:
+  branches:
+    include:
+      - main
+
+pr:
+  branches:
+    include:
+      - main
+
+variables:
+  terraformVersion: "1.15.8"
+  pythonVersion: "3.12"
+
+stages:
+  - stage: Validate
+    displayName: Validate infrastructure code
+
+    jobs:
+      - job: Terraform
+        displayName: Terraform validation
+
+        pool:
+          vmImage: ubuntu-latest
+
+        workspace:
+          clean: all
+
+        steps:
+          - checkout: self
+            displayName: Checkout repository
+            clean: true
+            fetchDepth: 0
+
+          - task: TerraformInstaller@1
+            displayName: Install Terraform
+            inputs:
+              terraformVersion: "$(terraformVersion)"
+
+          - bash: ./scripts/validate.sh terraform
+            displayName: Run Terraform validation
+            workingDirectory: "$(Build.SourcesDirectory)"
+
+      - job: Ansible
+        displayName: Ansible validation
+
+        pool:
+          vmImage: ubuntu-latest
+
+        workspace:
+          clean: all
+
+        steps:
+          - checkout: self
+            displayName: Checkout repository
+            clean: true
+            fetchDepth: 0
+
+          - task: UsePythonVersion@0
+            displayName: Use Python
+            inputs:
+              versionSpec: "$(pythonVersion)"
+              addToPath: true
+              architecture: x64
+
+          - bash: |
+              set -euo pipefail
+
+              python -m pip install --upgrade pip
+
+              python -m pip install \
+                --requirement configuration/ansible/requirements-ci.txt
+            displayName: Install Ansible development tools
+            workingDirectory: "$(Build.SourcesDirectory)"
+
+          - bash: |
+              set -euo pipefail
+
+              ansible-galaxy collection install \
+                --requirements-file configuration/ansible/requirements.yml
+            displayName: Install Ansible collections
+            workingDirectory: "$(Build.SourcesDirectory)"
+
+          - bash: ./scripts/validate.sh ansible
+            displayName: Run Ansible validation
+            workingDirectory: "$(Build.SourcesDirectory)"
