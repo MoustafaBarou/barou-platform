@@ -3,8 +3,8 @@
 set -Eeuo pipefail
 IFS=$'\n\t'
 
-readonly LOCATION="${AZURE_LOCATION:-westeurope}"
-readonly RESOURCE_GROUP="${TFSTATE_RESOURCE_GROUP:-rg-barou-tfstate-weu-001}"
+readonly LOCATION="${AZURE_LOCATION:-northeurope}"
+readonly RESOURCE_GROUP="${TFSTATE_RESOURCE_GROUP:-rg-barou-tfstate-neu-001}"
 readonly CONTAINER_NAME="${TFSTATE_CONTAINER:-tfstate}"
 readonly DELETE_LOCK_NAME="lock-tfstate-delete"
 readonly BLOB_ROLE_NAME="Storage Blob Data Contributor"
