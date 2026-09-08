@@ -49,32 +49,9 @@ The repository is intended to show not only which tools are used, but how the co
 
 ## Architecture
 
-```mermaid
-flowchart TB
-    Admin["Administrator"] --> Tailscale["Tailscale remote access"]
-    Tailscale --> Automation["ubuntu-dev-01 automation host"]
+![Barou Platform Infrastructure as Code architecture](docs/architecture/barou-platform-architecture.png)
 
-    Automation --> Terraform["Terraform"]
-    Automation --> Ansible["Ansible"]
-    Automation --> Kubectl["kubectl"]
-
-    Terraform --> Proxmox["Proxmox VE on HP EliteDesk"]
-    Proxmox --> Gitea["gitea-01"]
-    Proxmox --> Jenkins["jenkins-01"]
-    Proxmox --> Management["mgmt-01 with DNS and Caddy"]
-    Proxmox --> RKE2["RKE2 Kubernetes cluster"]
-
-    Ansible --> Gitea
-    Ansible --> Jenkins
-    Ansible --> Management
-    Ansible --> RKE2
-    Kubectl --> RKE2
-
-    Management --> Gitea
-    Management --> Jenkins
-    Management --> Ingress["RKE2 NGINX Ingress"]
-    Ingress --> Workloads["Rancher and Homepage"]
-```
+The diagram shows the implemented infrastructure and automation paths. Planned components such as Argo CD and the observability stack are intentionally excluded.
 
 The environment separates infrastructure provisioning, operating-system configuration and workload orchestration:
 
