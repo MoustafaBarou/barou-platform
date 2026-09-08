@@ -1,0 +1,105 @@
+---
+name: azure-wif-dev-$(Date:yyyyMMdd)$(Rev:.r)
+
+trigger: none
+
+pr: none
+
+variables:
+  terraformVersion: "1.15.8"
+  terraformWorkingDirectory: "$(Build.SourcesDirectory)/infrastructure/azure/environments/dev"
+  stateStorageAccount: "stbaroutf2ad92dcc"
+  stateContainer: "tfstate"
+  developmentResourceGroup: "rg-barou-platform-dev-neu-001"
+
+stages:
+  - stage: VerifyDevelopmentWif
+    displayName: Verify development workload identity
+
+    jobs:
+      - job: VerifyTerraformAccess
+        displayName: Verify Azure and Terraform access
+
+        pool:
+          vmImage: ubuntu-latest
+
+        workspace:
+          clean: all
+
+        steps:
+          - checkout: self
+            displayName: Checkout repository
+            clean: true
+            fetchDepth: 1
+
+          - task: TerraformInstaller@1
+            displayName: Install Terraform
+            inputs:
+              terraformVersion: "$(terraformVersion)"
+
+          - task: AzureCLI@2
+            displayName: Verify workload identity and Terraform backend
+            inputs:
+              azureSubscription: "sc-barou-platform-dev-wif"
+              scriptType: bash
+              scriptLocation: inlineScript
+              addSpnToEnvironment: true
+              workingDirectory: "$(terraformWorkingDirectory)"
+              inlineScript: |
+                set -euo pipefail
+
+                : "${servicePrincipalId:?Azure DevOps did not expose the service principal ID.}"
+                : "${tenantId:?Azure DevOps did not expose the tenant ID.}"
+                : "${idToken:?Azure DevOps did not expose an OIDC token.}"
+                : "${AZURESUBSCRIPTION_SERVICE_CONNECTION_ID:?Azure DevOps did not expose the service connection ID.}"
+
+                export ARM_USE_OIDC="true"
+                export ARM_USE_AZUREAD="true"
+                export ARM_CLIENT_ID="${servicePrincipalId}"
+                export ARM_TENANT_ID="${tenantId}"
+                export ARM_OIDC_TOKEN="${idToken}"
+                export ARM_ADO_PIPELINE_SERVICE_CONNECTION_ID="${AZURESUBSCRIPTION_SERVICE_CONNECTION_ID}"
+
+                ARM_SUBSCRIPTION_ID="$(
+                  az account show \
+                    --query id \
+                    --output tsv
+                )"
+
+                export ARM_SUBSCRIPTION_ID
+
+                echo "Authenticated Azure context:"
+
+                az account show \
+                  --query "{Name:name,State:state}" \
+                  --output table
+
+                echo "Validating access to the development deployment boundary..."
+
+                az group show \
+                  --name "$(developmentResourceGroup)" \
+                  --query "{Name:name,Location:location,State:properties.provisioningState}" \
+                  --output table
+
+                echo "Validating data-plane access to the Terraform state container..."
+
+                az storage blob list \
+                  --account-name "$(stateStorageAccount)" \
+                  --container-name "$(stateContainer)" \
+                  --auth-mode login \
+                  --query "[].name" \
+                  --output table
+
+                echo "Initializing the Terraform AzureRM backend through OIDC..."
+
+                terraform init \
+                  -input=false \
+                  -reconfigure \
+                  -no-color
+
+                echo "Validating the Terraform configuration..."
+
+                terraform validate \
+                  -no-color
+
+                echo "Development workload identity verification completed successfully."
