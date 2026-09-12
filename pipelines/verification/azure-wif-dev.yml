@@ -9,7 +9,8 @@ variables:
   terraformVersion: "1.15.8"
   terraformWorkingDirectory: "$(Build.SourcesDirectory)/infrastructure/azure/environments/dev"
   stateStorageAccount: "stbaroutf2ad92dcc"
-  stateContainer: "tfstate"
+  stateContainer: "tfstate-dev"
+  productionStateContainer: "tfstate-prod"
   developmentResourceGroup: "rg-barou-platform-dev-neu-001"
 
 stages:
@@ -38,7 +39,7 @@ stages:
               terraformVersion: "$(terraformVersion)"
 
           - task: AzureCLI@2
-            displayName: Verify workload identity and Terraform backend
+            displayName: Verify workload identity and state isolation
             inputs:
               azureSubscription: "sc-barou-platform-dev-wif"
               scriptType: bash
@@ -81,7 +82,7 @@ stages:
                   --query "{Name:name,Location:location,State:properties.provisioningState}" \
                   --output table
 
-                echo "Validating data-plane access to the Terraform state container..."
+                echo "Validating access to the development state container..."
 
                 az storage blob list \
                   --account-name "$(stateStorageAccount)" \
@@ -90,11 +91,36 @@ stages:
                   --query "[].name" \
                   --output table
 
-                echo "Initializing the Terraform AzureRM backend through OIDC..."
+                echo "Verifying that production state access is denied..."
+
+                ERROR_FILE="$(mktemp)"
+                trap 'rm -f "${ERROR_FILE}"' EXIT
+
+                if az storage blob list \
+                  --account-name "$(stateStorageAccount)" \
+                  --container-name "$(productionStateContainer)" \
+                  --auth-mode login \
+                  --only-show-errors \
+                  --output none \
+                  2>"${ERROR_FILE}"; then
+                  echo "ERROR: The development identity can list production state." >&2
+                  exit 1
+                fi
+
+                if grep -Fq "AuthorizationPermissionMismatch" "${ERROR_FILE}"; then
+                  echo "Production state access was denied as expected."
+                else
+                  echo "ERROR: The request failed without the expected authorization error." >&2
+                  cat "${ERROR_FILE}" >&2
+                  exit 1
+                fi
+
+                echo "Initializing the development backend through OIDC..."
 
                 terraform init \
                   -input=false \
                   -reconfigure \
+                  -lockfile=readonly \
                   -no-color
 
                 echo "Validating the Terraform configuration..."
