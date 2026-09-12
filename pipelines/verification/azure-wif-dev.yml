@@ -107,10 +107,13 @@ stages:
                   exit 1
                 fi
 
-                if grep -Fq "AuthorizationPermissionMismatch" "${ERROR_FILE}"; then
+                if grep -Fq \
+                  -e "AuthorizationPermissionMismatch" \
+                  -e "You do not have the required permissions needed to perform this operation." \
+                  "${ERROR_FILE}"; then
                   echo "Production state access was denied as expected."
                 else
-                  echo "ERROR: The request failed without the expected authorization error." >&2
+                  echo "ERROR: The request failed without a recognized permission-denied response." >&2
                   cat "${ERROR_FILE}" >&2
                   exit 1
                 fi
