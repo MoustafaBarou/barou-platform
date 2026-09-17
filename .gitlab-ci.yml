@@ -1,0 +1,32 @@
+---
+stages:
+  - verify
+
+default:
+  image: ubuntu:24.04
+  tags:
+    - homelab
+    - docker
+
+runner-smoke-test:
+  stage: verify
+  timeout: 5 minutes
+
+  script:
+    - |
+      set -eu
+
+      printf 'Runner: %s\n' "$CI_RUNNER_DESCRIPTION"
+      printf 'Project: %s\n' "$CI_PROJECT_PATH"
+      printf 'Commit: %s\n' "$CI_COMMIT_SHORT_SHA"
+
+      memory_limit="$(cat /sys/fs/cgroup/memory.max)"
+      read -r cpu_quota cpu_period < /sys/fs/cgroup/cpu.max
+
+      printf 'Memory limit: %s bytes\n' "$memory_limit"
+      printf 'CPU quota/period: %s/%s\n' "$cpu_quota" "$cpu_period"
+
+      test "$memory_limit" = "1073741824"
+      test "$cpu_quota" = "$cpu_period"
+
+      printf 'Runner connection and resource limits verified.\n'

@@ -1,0 +1,84 @@
+---
+- name: Install GitLab Runner repository dependencies
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - python3-debian
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Create APT keyring directory
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Download GitLab repository signing key
+  ansible.builtin.get_url:
+    url: https://packages.gitlab.com/gpgkey/gpg.key
+    dest: /etc/apt/keyrings/gitlab-runner.asc
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Configure GitLab Runner APT repository
+  ansible.builtin.deb822_repository:
+    name: gitlab-runner
+    types:
+      - deb
+    uris:
+      - https://packages.gitlab.com/runner/gitlab-runner/ubuntu
+    suites:
+      - "{{ ansible_facts['distribution_release'] }}"
+    components:
+      - main
+    architectures:
+      - amd64
+    signed_by: /etc/apt/keyrings/gitlab-runner.asc
+    state: present
+
+- name: Install GitLab Runner package
+  ansible.builtin.apt:
+    name: gitlab-runner
+    state: present
+    update_cache: true
+  environment:
+    NO_DOCKER_PRUNE: "1"
+
+- name: Create GitLab Runner configuration directory
+  ansible.builtin.file:
+    path: /etc/gitlab-runner
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Limit GitLab Runner to one concurrent job
+  ansible.builtin.lineinfile:
+    path: /etc/gitlab-runner/config.toml
+    regexp: '^concurrent\s*='
+    line: "concurrent = 1"
+    insertbefore: BOF
+    create: true
+    owner: root
+    group: root
+    mode: "0600"
+  diff: false
+  no_log: true
+
+- name: Deploy GitLab Runner registration template
+  ansible.builtin.copy:
+    src: registration-template.toml
+    dest: /etc/gitlab-runner/registration-template.toml
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Ensure GitLab Runner is enabled and running
+  ansible.builtin.systemd_service:
+    name: gitlab-runner
+    enabled: true
+    state: started
