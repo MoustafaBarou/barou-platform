@@ -1,0 +1,12 @@
+[[runners]]
+  limit = 1
+  executor = "docker"
+
+  [runners.docker]
+    image = "ubuntu:24.04"
+    privileged = false
+    cpus = "1.0"
+    memory = "1g"
+    memory_swap = "1g"
+    disable_cache = true
+    pull_policy = ["always"]
