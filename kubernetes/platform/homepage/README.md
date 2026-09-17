@@ -1,346 +1,160 @@
 # Homepage Platform Dashboard
 
-## Overview
+Homepage provides read-only Kubernetes and Proxmox information and links to platform services. It runs in the RKE2 cluster. Gitea and Jenkins widgets have been removed; GitLab integration is pending deployment of the new platform.
 
-Homepage is the central read-only dashboard for the Barou Platform homelab.
-
-It runs inside the RKE2 Kubernetes cluster and combines operational information from Kubernetes, Proxmox VE, Gitea and Jenkins.
+## Deployment Configuration
 
 | Property | Value |
 |---|---|
 | URL | `https://platform.lab.barouconsulting.nl` |
-| Namespace | `homepage` |
-| Deployment | `homepage` |
-| Container image | `ghcr.io/gethomepage/homepage:v1.13.2` |
-| Kubernetes node | `k8s-worker-01` |
-| Service type | `ClusterIP` |
-| Ingress class | `nginx` |
+| Namespace / Deployment | `homepage` / `homepage` |
+| Image | `ghcr.io/gethomepage/homepage:v1.13.2` |
+| Replicas / strategy | 1 / RollingUpdate |
+| Node selector | `kubernetes.io/hostname: k8s-worker-01` |
+| Service type / ingress class | `ClusterIP` / `nginx` |
+| Container port | `3000/TCP` |
+| CPU request / limit | `50m` / `250m` |
+| Memory request / limit | `128Mi` / `256Mi` |
+| ServiceAccount | `homepage` |
 
-Homepage provides visibility into the platform. Administrative actions remain available through the management interfaces of the connected services.
+The node selector means the current Deployment cannot move to another node if the worker is unavailable. Homepage is a dashboard, not a replacement for monitoring, alerting or service administration.
 
-## Traffic Flow
+## Traffic and Configuration
 
-```mermaid
-flowchart LR
-    Client --> DNS["Internal DNS"]
-    DNS --> Caddy["Caddy on mgmt-01"]
-    Caddy --> Ingress["RKE2 NGINX Ingress"]
-    Ingress --> Service["Homepage Service"]
-    Service --> Pod["Homepage Pod"]
-```
-
-Internal DNS resolves `platform.lab.barouconsulting.nl` to `mgmt-01` at `192.168.178.106`.
-
-Caddy terminates HTTPS and forwards traffic to the RKE2 ingress endpoint at `192.168.178.111:80`.
-
-The Kubernetes Service forwards traffic to the Homepage container on port `3000`.
-
-## Repository Structure
+Internal DNS resolves `platform.lab.barouconsulting.nl` to `192.168.178.106`. Caddy terminates HTTPS and forwards the request to the worker ingress at `192.168.178.111:80`. The Ingress routes the hostname to the Homepage Service and container.
 
 | File | Purpose |
 |---|---|
-| `namespace.yaml` | Creates the `homepage` namespace |
-| `service-account.yaml` | Creates the Homepage ServiceAccount |
-| `rbac.yaml` | Grants read-only Kubernetes permissions |
-| `configmap.yaml` | Stores the Homepage configuration |
-| `deployment.yaml` | Runs Homepage and injects Secret references |
-| `service.yaml` | Exposes Homepage inside the cluster |
-| `ingress.yaml` | Routes the platform hostname to Homepage |
-| `README.md` | Documents the deployment and operations |
+| `namespace.yaml` | Namespace |
+| `service-account.yaml` | Workload identity inside Kubernetes |
+| `rbac.yaml` | Read-only Kubernetes permissions |
+| `configmap.yaml` | Homepage settings, service links and widgets |
+| `deployment.yaml` | Pod, image, resources, probes and Secret references |
+| `service.yaml` | In-cluster service |
+| `ingress.yaml` | Hostname route |
 
-The manifests are applied individually. This directory does not currently use Helm or Kustomize.
+The manifests are applied individually; this directory does not use Helm or Kustomize. Homepage configuration files are mounted under `/app/config/` as ConfigMap `subPath` mounts.
 
-## Integrations
+## Integrations and Credentials
 
-### Kubernetes
+Kubernetes information uses the `homepage` ServiceAccount and the permissions in `rbac.yaml`. Cluster and node metrics also depend on the metrics API. Rancher is a service link, not a configured Rancher API widget.
 
-Homepage uses the `homepage` ServiceAccount and the permissions defined in `rbac.yaml`.
-
-The dashboard displays:
-
-- cluster CPU usage;
-- cluster memory usage;
-- control-plane node usage;
-- worker node usage;
-- selected Kubernetes workload information.
-
-### Proxmox VE
-
-| Property | Value |
+| Proxmox setting | Value |
 |---|---|
-| API URL | `https://192.168.178.10:8006` |
-| Dashboard URL | `https://proxmox.lab.barouconsulting.nl` |
-| Service account | `homepage@pve` |
-| API token ID | `homepage@pve!homepage` |
-| Permission | `PVEAuditor` on `/` |
+| API endpoint | `https://192.168.178.10:8006` |
+| Browser URL | `https://proxmox.lab.barouconsulting.nl` |
+| Account / token ID | `homepage@pve` / `homepage@pve!homepage` |
+| Role | `PVEAuditor` on `/` |
 | Kubernetes Secret | `homepage-proxmox` |
+| Required keys | `token-id`, `token-secret` |
 
-Required Secret keys:
+The Proxmox widget displays VM/LXC counts and resource usage. Its token values are injected through `HOMEPAGE_VAR_PROXMOX_TOKEN_ID` and `HOMEPAGE_VAR_PROXMOX_TOKEN_SECRET`. `HOMEPAGE_ALLOWED_HOSTS` is set to `platform.lab.barouconsulting.nl`.
 
-- `token-id`
-- `token-secret`
+The only remaining external integration Secret is `homepage-proxmox`. The retired `homepage-gitea` and `homepage-jenkins` Secrets and their environment references have been removed. Do not recreate them to repair a new pod; inspect whether an outdated manifest or revision still references them.
 
-The widget displays VM count, LXC count, CPU usage and memory usage.
-
-### Gitea
-
-| Property | Value |
-|---|---|
-| API URL | `http://192.168.178.104:3000` |
-| Dashboard URL | `https://gitea.lab.barouconsulting.nl` |
-| Kubernetes Secret | `homepage-gitea` |
-| Required key | `api-token` |
-
-The token is injected as:
-
-```text
-HOMEPAGE_VAR_GITEA_API_TOKEN
-```
-
-The widget displays repositories, notifications, issues and pull requests.
-
-### Jenkins
-
-| Property | Value |
-|---|---|
-| API URL | `http://192.168.178.105:8080` |
-| Dashboard URL | `https://jenkins.lab.barouconsulting.nl` |
-| API account | `homepage` |
-| Kubernetes Secret | `homepage-jenkins` |
-| Monitored job | `platform-ci-demo` |
-
-The Jenkins account has the following Matrix Authorization permissions:
-
-- `Overall/Read`
-- `Job/Read`
-- `View/Read`
-
-The account does not have Jenkins administration permissions.
-
-Required Secret keys:
-
-- `username`
-- `api-token`
-
-The values are injected as:
-
-```text
-HOMEPAGE_VAR_JENKINS_USERNAME
-HOMEPAGE_VAR_JENKINS_API_TOKEN
-```
-
-Homepage uses its `customapi` widget to display:
-
-- job name;
-- latest build result;
-- latest build number;
-- whether a build is currently running.
-
-## Secret Management
-
-Credentials are stored in Kubernetes Secrets and are not committed to Git.
-
-| Secret | Required keys |
-|---|---|
-| `homepage-proxmox` | `token-id`, `token-secret` |
-| `homepage-gitea` | `api-token` |
-| `homepage-jenkins` | `username`, `api-token` |
-
-Confirm that the Secrets exist:
+Verify the required Secret without decoding values:
 
 ```bash
-kubectl -n homepage get secrets \
-  homepage-proxmox \
-  homepage-gitea \
-  homepage-jenkins
+kubectl -n homepage get secret homepage-proxmox
+kubectl -n homepage describe secret homepage-proxmox
 ```
 
-Inspect Secret metadata and key sizes without decoding values:
-
-```bash
-kubectl -n homepage describe secret homepage-jenkins
-```
-
-Exported Secret manifests, decoded values, passwords and API tokens must not be stored in the repository.
+Secret values, exported Secret manifests and API credentials must stay outside Git. Before a fresh deployment, create the namespace and provision this Secret through the approved credential-handling process. Without it, the container cannot start successfully.
 
 ## Deployment
 
-Apply the resources in dependency order:
+Run from the repository root, against the intended cluster. For a fresh installation, create the namespace, provision the Secret described above, then apply the remaining manifests:
 
 ```bash
 kubectl apply -f kubernetes/platform/homepage/namespace.yaml
+```
+
+After confirming `homepage-proxmox` exists:
+
+```bash
 kubectl apply -f kubernetes/platform/homepage/service-account.yaml
 kubectl apply -f kubernetes/platform/homepage/rbac.yaml
 kubectl apply -f kubernetes/platform/homepage/configmap.yaml
 kubectl apply -f kubernetes/platform/homepage/deployment.yaml
 kubectl apply -f kubernetes/platform/homepage/service.yaml
 kubectl apply -f kubernetes/platform/homepage/ingress.yaml
+kubectl -n homepage rollout status deployment/homepage --timeout=120s
 ```
 
-Validate a manifest against the Kubernetes API without changing the cluster:
+For changes to the existing dashboard, validate and apply only the affected resources. Example:
 
 ```bash
-kubectl apply --dry-run=server \
-  -f kubernetes/platform/homepage/configmap.yaml
+kubectl apply --dry-run=server -f kubernetes/platform/homepage/configmap.yaml
+kubectl apply --dry-run=server -f kubernetes/platform/homepage/deployment.yaml
+kubectl apply -f kubernetes/platform/homepage/configmap.yaml
+kubectl apply -f kubernetes/platform/homepage/deployment.yaml
 ```
 
-Homepage configuration files are mounted from the ConfigMap using `subPath`. Restart the Deployment after changing the ConfigMap:
+ConfigMap updates do not propagate into existing `subPath` mounts. If the pod template changed, the Deployment rolls out new pods. For a ConfigMap-only update, restart the Deployment to load the configuration, then wait for readiness:
 
 ```bash
 kubectl -n homepage rollout restart deployment/homepage
-
-kubectl -n homepage rollout status \
-  deployment/homepage \
-  --timeout=120s
+kubectl -n homepage rollout status deployment/homepage --timeout=120s
 ```
+
+There is no need for an extra restart when new pods from a template change have already loaded the updated ConfigMap. This behavior is documented in [Kubernetes ConfigMaps](https://kubernetes.io/docs/concepts/configuration/configmap/#mounted-configmaps-are-updated-automatically).
+
+The retirement change updated both manifests, completed its rollout, and removed the two obsolete Secrets. GitLab integration remains a future change.
 
 ## Operations
 
-Display the current state:
-
 ```bash
 kubectl -n homepage get deployment,pods,service,ingress
-```
-
-Expected state:
-
-- Deployment reports `1/1` ready;
-- pod reports `1/1` ready and `Running`;
-- restart count remains stable;
-- Service exposes port `3000`;
-- Ingress uses `platform.lab.barouconsulting.nl`.
-
-Display the pod placement and IP address:
-
-```bash
 kubectl -n homepage get pods -o wide
+kubectl -n homepage logs deployment/homepage --tail=100
 ```
 
-The pod should run on `k8s-worker-01`.
+Expect one ready replica, a ready pod on `k8s-worker-01`, stable restart counts and the correct ingress hostname. To follow logs, use `kubectl -n homepage logs deployment/homepage --follow`; stop with `Ctrl+C`.
 
-Display recent logs:
+## Troubleshooting
+
+For a dashboard outage, inspect pods and events first:
 
 ```bash
-kubectl -n homepage logs deployment/homepage \
-  --tail=100 \
-  --prefix
+kubectl -n homepage get pods
+kubectl -n homepage get events --sort-by=.metadata.creationTimestamp
+kubectl -n homepage get endpointslices -l kubernetes.io/service-name=homepage
 ```
 
-Follow logs in real time:
+Check DNS separately:
 
 ```bash
-kubectl -n homepage logs deployment/homepage \
-  --follow \
-  --prefix
+dig @192.168.178.106 platform.lab.barouconsulting.nl +short
 ```
 
-Stop following logs with `Ctrl+C`.
+The expected DNS result is `.106`. EndpointSlices should identify a ready Homepage backend. Then inspect Caddy and ingress if the pod and Service are healthy.
+
+For a Proxmox widget error, confirm the Secret and its key names, inspect recent Homepage logs, and check API reachability and token permissions. Do not expose decoded credentials in logs or screenshots.
+
+For Kubernetes information errors:
+
+```bash
+kubectl -n homepage get serviceaccount homepage
+kubectl auth can-i get nodes --as=system:serviceaccount:homepage:homepage
+kubectl top nodes
+```
+
+The authorization check requires the operator to be allowed to impersonate that ServiceAccount. An impersonation-denied response is not proof that Homepage's own permissions are wrong. Metrics availability and ServiceAccount authorization are separate checks.
 
 ## Rollback
 
-Display the Deployment history:
+Inspect rollout history and the intended revision before changing it:
 
 ```bash
 kubectl -n homepage rollout history deployment/homepage
 ```
 
-Roll back the Deployment to its previous revision:
+A Deployment rollback restores its pod template, not prior ConfigMap contents or deleted Secrets. Older revisions can reintroduce references to the retired widget Secrets and fail to start.
 
-```bash
-kubectl -n homepage rollout undo deployment/homepage
+Prefer a reviewed Git correction that restores compatible configuration and Deployment manifests. Apply the corrected files, ensure new pods load any ConfigMap changes, and verify the rollout and dashboard. Do not blindly undo the retirement revision.
 
-kubectl -n homepage rollout status \
-  deployment/homepage \
-  --timeout=120s
-```
+## Security and Future Work
 
-A Deployment rollback does not restore previous ConfigMap contents. ConfigMap changes must be restored from Git and applied again.
+Use scoped API credentials, Kubernetes RBAC and trusted internal HTTPS. Kubernetes Secrets remain sensitive runtime data. Homepage has visibility permissions rather than infrastructure administration privileges.
 
-## Troubleshooting
-
-### Dashboard unavailable
-
-Check the resources:
-
-```bash
-kubectl -n homepage get deployment,pods,service,ingress
-```
-
-Confirm that the Service has a backend endpoint:
-
-```bash
-kubectl -n homepage get endpoints homepage
-```
-
-Check the logs:
-
-```bash
-kubectl -n homepage logs deployment/homepage \
-  --tail=200 \
-  --prefix
-```
-
-Check DNS resolution:
-
-```bash
-dig platform.lab.barouconsulting.nl
-```
-
-The expected address is `192.168.178.106`.
-
-### Widget API error
-
-Confirm that the required Secrets exist:
-
-```bash
-kubectl -n homepage get secrets
-```
-
-Display the Deployment's Secret references without showing Secret values:
-
-```bash
-kubectl -n homepage get deployment homepage \
-  -o jsonpath='{range .spec.template.spec.containers[0].env[*]}{.name}{" -> "}{.valueFrom.secretKeyRef.name}{"/"}{.valueFrom.secretKeyRef.key}{"\n"}{end}'
-```
-
-Search recent logs for integration errors:
-
-```bash
-kubectl -n homepage logs deployment/homepage \
-  --since=5m |
-grep -iE 'error|unauthorized|forbidden|jenkins|gitea|proxmox' || true
-```
-
-### Kubernetes information unavailable
-
-Confirm that the ServiceAccount exists:
-
-```bash
-kubectl -n homepage get serviceaccount homepage
-```
-
-Check whether the ServiceAccount can read Kubernetes nodes:
-
-```bash
-kubectl auth can-i get nodes \
-  --as=system:serviceaccount:homepage:homepage
-```
-
-Expected result:
-
-```text
-yes
-```
-
-## Security Model
-
-The deployment follows these controls:
-
-- service credentials are stored in Kubernetes Secrets;
-- Secret values are excluded from Git;
-- Proxmox uses a dedicated read-only API account;
-- Jenkins uses a dedicated read-only API account;
-- Kubernetes access uses a dedicated ServiceAccount and RBAC;
-- external HTTPS is terminated by Caddy;
-- integrations use internal API addresses where possible;
-- Homepage receives visibility permissions rather than administrative permissions.
+Add a GitLab service link or widget only when GitLab exists, its endpoint is verified and any required credentials have a defined scope. Full monitoring, alerting and external secret management remain separate platform work.

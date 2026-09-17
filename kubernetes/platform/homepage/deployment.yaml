@@ -57,24 +57,6 @@ spec:
                   name: homepage-proxmox
                   key: token-secret
 
-            - name: HOMEPAGE_VAR_GITEA_API_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: homepage-gitea
-                  key: api-token
-
-            - name: HOMEPAGE_VAR_JENKINS_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: homepage-jenkins
-                  key: username
-
-            - name: HOMEPAGE_VAR_JENKINS_API_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: homepage-jenkins
-                  key: api-token
-
           resources:
             requests:
               cpu: 50m

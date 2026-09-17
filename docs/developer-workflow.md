@@ -1,555 +1,202 @@
-nano docs/developer-workflow.md
 # Developer Workflow
 
-This document describes the local development and CI workflow used in the `barou-platform` repository.
+Development takes place through VS Code Remote SSH on `ubuntu-dev-01`. GitHub remains the public repository and pull-request platform. GitLab CI/CD is planned; it has not replaced the current GitHub workflow.
 
-The goal of this workflow is to reduce repetitive manual tasks while keeping infrastructure changes safe, reviewable, and reproducible.
+## Working Environment
 
----
+| Component | Purpose |
+|---|---|
+| VS Code Remote SSH | Edit files and run commands on the Linux automation host |
+| Git and GitHub CLI | Version control, pull requests and checks |
+| Terraform | Validate, plan and apply infrastructure changes |
+| Ansible | Validate and configure hosts |
+| kubectl | Inspect and manage the Kubernetes cluster |
+| SSH agent / keychain | Reuse an unlocked passphrase-protected SSH key |
 
-## Overview
+The repository is `~/terraform/barou-platform`. The development VM's current LAN address is `192.168.178.101`; its Tailscale address is `100.111.185.114`.
 
-The development workflow follows this process:
+Run repository commands from the repository root unless instructed otherwise. Run Ansible commands from `configuration/ansible` so its `ansible.cfg`, inventory and role paths are selected.
 
-```text
-Feature branch
-    ↓
-Local development
-    ↓
-Stage intended changes
-    ↓
-Local validation
-    ↓
-Commit
-    ↓
-Push
-    ↓
-Pull request
-    ↓
-GitHub Actions CI
-    ↓
-Required status checks
-    ↓
-Automatic squash merge
-    ↓
-Post-merge cleanup
-    ↓
-Clean and updated main branch
+## Start a Change
 
-The workflow is built around four custom Git commands:
+First inspect the branch and working tree:
 
-git start
-git validate
-git submit
-git cleanup
-Engineering Principles
+```bash
+cd ~/terraform/barou-platform
+git status --short --branch
+```
 
-The workflow follows several engineering principles:
+If work is already in progress, continue on its branch. With a clean working tree, start a new change through the configured helper:
 
-Automation First
-Infrastructure as Code
-Git as the Single Source of Truth
-Fail Fast
-Least Privilege
-Safe Defaults
-Small and Reviewable Changes
-Reproducible Validation
-Protected Main Branch
-Continuous Improvement
-
-Repeated manual tasks should be evaluated for automation when they are performed more than twice.
-
-Automation must reduce operational risk rather than remove necessary safety controls.
-
-Prerequisites
-
-The development environment currently requires:
-
-Git
-GitHub CLI
-Terraform
-Ansible Core
-ansible-lint
-pipx
-SSH
-ssh-agent / keychain
-
-GitHub authentication is configured using:
-
-SSH for Git operations
-GitHub CLI authentication for GitHub API operations
-
-The SSH private key remains protected by a passphrase.
-
-keychain is used to reuse the unlocked SSH key across shell sessions without storing the passphrase in plain text.
-
-Start a Feature Branch
-
-Use:
-
+```bash
 git start feat/example-change
+```
 
-Example:
+The documented helper uses `scripts/start-feature.sh` to check for existing work or a duplicate branch, update `main` with a fast-forward pull and create the feature branch.
 
-git start feat/ansible-roles
+The equivalent manual sequence, starting from a clean tree, is:
 
-The command uses:
+```bash
+git switch main
+git pull --ff-only
+git switch -c feat/example-change
+```
 
-scripts/start-feature.sh
+`--ff-only` updates the branch only when no merge commit is needed. Stop and inspect any failure before continuing with later commands.
 
-The workflow automatically:
+## Edit and Inspect
 
-Verifies that the working tree is clean.
-Checks whether the requested branch already exists locally.
-Checks whether the requested branch already exists remotely.
-Switches to main.
-Updates main using fast-forward only.
-Prunes deleted remote branches.
-Creates the requested feature branch.
+Open the repository in the connected VS Code session:
 
-Example result:
+```bash
+code .
+```
 
-Switching to main...
-Updating main...
-Pruning remote branches...
-Creating branch feat/ansible-roles...
+After saving files:
 
-Ready to work on feat/ansible-roles.
-Safety
+```bash
+git --no-pager diff --check
+git --no-pager diff --stat
+git --no-pager diff
+```
 
-The script refuses to continue when:
+`--check` detects whitespace problems. `--stat` summarizes changed files. The full diff shows what the commit will change; it does not validate the behavior of those changes. `--no-pager` prints directly in the terminal.
 
-uncommitted changes exist;
-the requested branch already exists locally;
-the requested branch already exists remotely.
+Stage intended files explicitly, then inspect the staged diff:
 
-This prevents accidentally creating work from an outdated or dirty repository state.
+```bash
+git add docs/architecture.md
+git --no-pager diff --cached --check
+git --no-pager diff --cached
+```
 
-Local Validation
+Use the actual paths belonging to the change. Keep private keys, API tokens, state, kubeconfigs and plan artifacts out of commits.
 
-Use:
+## Validate
 
-git validate
+Run the shared checks from the repository root:
 
-The command uses:
+```bash
+./scripts/validate.sh all
+```
 
-scripts/validate.sh
+The `git validate` alias also runs validation when configured. The script checks Terraform formatting and configuration with backend initialization disabled, plus Ansible syntax and linting. It does not apply infrastructure or connect to managed hosts.
 
-It can be executed from any directory inside the repository.
+For an operational Ansible change, check the relevant playbook as well. Example for the management gateway:
 
-The validation workflow currently performs:
+```bash
+cd ~/terraform/barou-platform/configuration/ansible
+ansible-playbook playbooks/mgmt.yml --syntax-check
+ansible-playbook playbooks/mgmt.yml --limit mgmt_servers --check --diff
+```
 
-Terraform
-terraform fmt -check -recursive
-terraform init -backend=false
-terraform validate
+Check mode is a preview where supported. Review its scope and any limitations before applying. Inspect actual service behavior after a live change.
 
-This verifies:
+## Submit a Pull Request
 
-Terraform formatting;
-provider initialization;
-Terraform configuration validity.
+The configured helper is:
 
-The backend is deliberately disabled during validation.
+```bash
+git submit "docs: update platform architecture"
+```
 
-Local validation must not modify infrastructure.
+Its documented workflow validates the change, commits staged files, pushes, creates or reuses a pull request, enables automatic squash merge, waits for merge confirmation and cleans up afterward. **This helper includes merge automation.** Use the manual path if you want to inspect the PR before enabling merge.
 
-Ansible
+The helper scripts under `scripts/` are authoritative. Inspect them when changing the workflow; they are not built-in Git commands.
 
-The validation workflow performs:
+For manual submission, after validation and staging:
 
-ansible-playbook playbooks/bootstrap.yml --syntax-check
-ansible-lint
+```bash
+git commit -m "docs: update platform architecture"
+git push -u origin HEAD
+```
 
-This validates:
+Write the PR description in a temporary file through VS Code. Explain the problem, what changed, validation results and anything still pending:
 
-Ansible playbook syntax;
-Ansible best practices;
-linting rules.
+```bash
+code /tmp/barou-pr-body.md
+```
 
-Successful validation ends with:
+After saving that file:
 
-Terraform validation passed.
-Ansible validation passed.
-All local validation checks passed.
-Stage Changes
+```bash
+gh pr create --base main \
+  --title "docs: update platform architecture" \
+  --body-file /tmp/barou-pr-body.md
+gh pr checks --watch
+```
 
-Files are staged explicitly before submission.
+Use a title and description appropriate to the change. Do not treat “no checks reported” as a pass; inspect workflow triggers and required checks.
 
-Example:
+GitHub Actions provides Terraform and Ansible validation. Azure static CI uses the same validation script. See [CI/CD Architecture](ci-cd.md) for the separate Azure access-verification workflow.
 
-git add configuration/ansible/playbooks/bootstrap.yml
+## Merge and Finish the Branch
 
-Multiple files can be staged when required:
+Review the PR and check results before merging. Once the change is ready and repository rules are satisfied:
 
-git add \
-  configuration/ansible/playbooks/bootstrap.yml \
-  configuration/ansible/roles/common/
+```bash
+gh pr merge --squash --delete-branch
+```
 
-The workflow deliberately does not automatically execute:
+A squash merge creates a new commit containing the branch's changes. It does not preserve the original feature commits as ancestors of `main`.
 
-git add .
+Confirm the PR state using its number before cleanup. Replace `PR_NUMBER` with that number:
 
-The developer remains responsible for deciding which files belong in a commit.
+```bash
+gh pr view PR_NUMBER --json state,mergedAt,url
+```
 
-This prevents accidental inclusion of unrelated or sensitive files.
+After it reports `MERGED`, and with no uncommitted work:
 
-Submit a Change
-
-After staging the intended changes, use:
-
-git submit "feat: example change"
-
-Example:
-
-git submit "feat: refactor Ansible into reusable roles"
-
-The command uses:
-
-scripts/submit-change.sh
-
-The submission workflow automatically performs:
-
-Required tool checks
-    ↓
-Local validation
-    ↓
-Commit
-    ↓
-Push
-    ↓
-Pull request creation
-    ↓
-Enable automatic squash merge
-    ↓
-Watch CI checks
-    ↓
-Wait for PR MERGED state
-    ↓
-Switch to main
-    ↓
-Pull latest main
-    ↓
-Prune deleted remote branches
-    ↓
-Delete local feature branch
-    ↓
-Display final repository status
-Submit Safety Checks
-
-git submit refuses to continue when:
-
-the repository is in detached HEAD state;
-the current branch is main;
-required tools are missing;
-tracked changes remain unstaged;
-untracked files remain in the repository;
-no changes or commits exist to submit;
-local validation fails;
-the pull request is closed without being merged.
-
-The script therefore follows a fail-fast approach.
-
-Pull Request Automation
-
-When no open pull request exists for the current feature branch, git submit creates one automatically using GitHub CLI.
-
-If a pull request already exists, the existing pull request is reused.
-
-The pull request targets:
-
-main
-
-Automatic squash merge is enabled after the pull request is created.
-
-The branch is only merged when all repository rules and required status checks have passed.
-
-GitHub Actions CI
-
-GitHub Actions validates every pull request targeting main.
-
-The CI workflow is stored in:
-
-.github/workflows/ci.yml
-
-Current CI jobs:
-
-Terraform validation
-
-The Terraform job performs:
-
-Checkout repository
-Setup Terraform
-Terraform format check
-Terraform initialization without backend
-Terraform validation
-Ansible validation
-
-The Ansible job performs:
-
-Checkout repository
-Install Ansible development tools
-Install required collections
-Ansible syntax validation
-ansible-lint
-
-Both jobs must succeed before a pull request can be merged.
-
-Branch Protection
-
-The main branch is protected using a GitHub ruleset.
-
-The current protection includes:
-
-Pull request required
-Required status checks
-Terraform validation required
-Ansible validation required
-Branch must be up to date before merging
-Force pushes blocked
-Branch deletion restricted
-
-Direct development on main is not part of the normal workflow.
-
-Merge Strategy
-
-The repository uses:
-
-Squash merge
-
-A feature branch may contain multiple development commits, but the pull request is represented by one commit on main.
-
-Example:
-
-Feature branch
-
-A ─ B ─ C
-
-After squash merge
-
-A ─ S
-
-S represents the combined changes from the feature branch.
-
-Because the original feature commit is not an ancestor of main, Git may not consider the local feature branch traditionally merged.
-
-For that reason, submit-change.sh only force-deletes the local branch after GitHub has explicitly confirmed that the pull request state is:
-
-MERGED
-
-This prevents unsafe branch deletion.
-
-Automatic Post-Merge Cleanup
-
-After GitHub confirms that the pull request has been merged, git submit automatically:
-
+```bash
 git switch main
 git pull --ff-only
 git fetch --prune
+git status --short --branch
+```
 
-The completed local feature branch is then removed.
+The configured `git cleanup` helper can perform normal post-merge cleanup. If Git refuses to delete a squash-merged local branch, first confirm the PR is merged and there are no later local-only changes. A refusal is not a reason to force-delete an unreviewed branch.
 
-The workflow ends with:
+## Custom Commands
 
-On branch main
-Your branch is up to date with 'origin/main'.
+| Command | Documented purpose |
+|---|---|
+| `git start <branch>` | Start from an updated `main` with a clean tree |
+| `git validate` | Run Terraform and Ansible validation |
+| `git submit "<message>"` | Validate, commit, push, open PR, enable merge and clean up |
+| `git cleanup` | Update `main`, prune references and clean completed branches |
 
-nothing to commit, working tree clean
+If a helper is unavailable, inspect local aliases:
 
-This means the developer can immediately start the next task.
+```bash
+git config --get-regexp '^alias\.(start|validate|submit|cleanup)$'
+```
 
-Manual Repository Cleanup
+Use the documented script or manual commands rather than assuming an alias exists on a new workstation.
 
-Manual cleanup remains available using:
+## SSH and Command Practice
 
-git cleanup
+Keep private keys passphrase-protected. Check loaded agent identities with `ssh-add -l`; do not put key passphrases in scripts or Git. Investigate changed host keys through a trusted console before updating `known_hosts`.
 
-The command uses:
+For Kubernetes practice, learn the full commands first:
 
-scripts/git-cleanup.sh
+```bash
+kubectl get nodes
+kubectl get pods -A
+kubectl get pods -A -o wide
+```
 
-It automatically:
+`-A` means all namespaces and is uppercase. `show` is not the kubectl command for listing pods. A temporary shell alias can shorten practice commands:
 
-Verifies that the working tree is clean.
-Switches to main.
-Updates main using fast-forward only.
-Prunes deleted remote branches.
-Removes safely merged local branches.
-Displays the final repository status.
+```bash
+alias k='kubectl'
+k get pods -A
+```
 
-This command is useful after interrupted workflows or manual operations.
+This alias lasts for the current shell unless added to shell configuration. An alias changes typing, not network access or permissions.
 
-SSH Key Management
+## Migration Work
 
-Git operations use SSH authentication.
+The current `feat/gitlab-platform` work retires Gitea and Jenkins and prepares for GitLab. Keep implementation status accurate in PRs: the retirement has been applied in the lab, while GitLab and Runner deployment remain pending.
 
-The private SSH key is stored at:
-
-~/.ssh/id_ed25519
-
-The private key remains passphrase protected.
-
-The passphrase is not stored in scripts, Git, environment files, or configuration files.
-
-keychain is used to reuse the SSH agent across login sessions.
-
-The shell configuration initializes keychain with:
-
-if command -v keychain >/dev/null 2>&1; then
-  eval "$(keychain --eval --quiet id_ed25519)"
-fi
-
-The loaded SSH identities can be verified using:
-
-ssh-add -l
-
-After the key has been unlocked, normal Git operations should not repeatedly request the passphrase.
-
-Daily Development Workflow
-
-The normal workflow is intentionally small.
-
-1. Start work
-git start feat/example-change
-2. Make changes
-
-Edit the required Terraform, Ansible, documentation, or other project files.
-
-3. Stage intended changes
-git add <files>
-4. Optional local validation
-git validate
-
-This is optional because git submit automatically performs validation again.
-
-Running it manually can still be useful during development.
-
-5. Submit
-git submit "feat: describe the change"
-
-The rest of the workflow is automated.
-
-Example
-
-A future Ansible role change could use:
-
-git start feat/ansible-common-role
-
-Make the required changes.
-
-Stage them:
-
-git add configuration/ansible/
-
-Then submit:
-
-git submit "feat: add reusable common Ansible role"
-
-The automation then performs:
-
-Validation
-→ Commit
-→ Push
-→ Pull Request
-→ GitHub Actions
-→ Required Checks
-→ Auto Merge
-→ Merge Verification
-→ Cleanup
-→ Clean Main
-What Is Deliberately Not Automated
-
-Some operations intentionally remain explicit.
-
-The workflow does not automatically:
-
-stage every changed file;
-store SSH private key passphrases;
-commit directly to main;
-bypass failed CI checks;
-bypass branch protection;
-force merge failed pull requests;
-execute terraform apply;
-expose Proxmox credentials to GitHub-hosted runners.
-
-Automation should never bypass safety controls simply to make the workflow faster.
-
-Current Automation Commands
-Command	Purpose
-git start <branch>	Start a feature branch from an updated main
-git validate	Run local Terraform and Ansible quality checks
-git submit "<message>"	Validate, commit, push, create PR, merge, and clean up
-git cleanup	Restore the repository to a clean and updated main
-CI/CD Responsibility Model
-
-The current workflow separates responsibilities:
-
-Terraform
-Infrastructure provisioning
-
-Ansible
-Operating system configuration
-
-Git
-Source of truth
-
-GitHub Actions
-Continuous integration
-
-GitHub Rulesets
-Merge governance
-
-GitHub CLI
-Developer workflow automation
-
-Future platform components will extend this model without replacing these responsibilities.
-
-Future Improvements
-
-Planned improvements include:
-
-reusable Ansible roles;
-Docker automation;
-Gitea;
-Jenkins;
-self-hosted CI runners;
-automated Terraform plans;
-remote Terraform state;
-Kubernetes provisioning with Terraform;
-RKE2;
-Rancher;
-Argo CD;
-Prometheus;
-Grafana;
-Loki;
-infrastructure health checks;
-dependency update automation;
-security scanning;
-secrets detection;
-pre-commit hooks.
-Workflow Goal
-
-The intended developer experience is:
-
-git start feat/change
-
-Make and stage the required changes:
-
-git add <files>
-
-Then:
-
-git submit "feat: describe the change"
-
-Everything after that is handled by automated validation, CI, merge governance, and repository cleanup.
-
-The objective is not automation for its own sake.
-
-The objective is a workflow that is:
-
-repeatable;
-safe;
-auditable;
-maintainable;
-easy to extend;
-difficult to misuse.
+Do not change the Git remote or remove existing CI simply because the new platform is planned. Repository synchronization, GitLab checks, runner isolation and deployment ownership must be implemented and verified first. Kubernetes and the remaining lab services must stay running.

@@ -1,123 +1,74 @@
-Tailscale Router Role
-Purpose
+# Tailscale Router Role
 
-The tailscale_router role configures the management gateway as a secure Tailscale subnet router for the Barou homelab.
+The `tailscale_router` role configures `mgmt-01` as the homelab's Tailscale subnet router. Authorized clients can reach the private LAN without publicly exposing management services.
 
-It allows authorized Tailscale clients to reach internal homelab services without exposing those services directly to the public internet.
+## Configuration
 
-Responsibilities
+| Setting | Value |
+|---|---|
+| Gateway | `mgmt-01`, VM 106 |
+| LAN interface and address | `eth0`, `192.168.178.106/24` |
+| Tailscale address | `100.72.132.51` |
+| Advertised subnet | `192.168.178.0/24` |
+| Playbook | `configuration/ansible/playbooks/mgmt.yml` |
+| Inventory group | `mgmt_servers` |
 
-This role manages:
+The role manages Tailscale installation and service availability, IPv4/IPv6 forwarding, explicit UFW forwarding rules, authentication-state validation and subnet advertisement. It checks for the Tailscale backend state `Running` before advertising the route.
 
-Tailscale installation
-Tailscale service availability
-IPv4 forwarding
-IPv6 forwarding
-UFW routed traffic rules
-Tailscale authentication state validation
-Homelab subnet advertisement
-Advertised Network
+UFW permits the configured routed traffic from `tailscale0` toward `eth0` for the homelab subnet. The default routed firewall policy remains restrictive.
 
-The management gateway advertises the following internal network:
+The forwarding settings are:
 
-192.168.178.0/24
-
-This allows authorized Tailscale clients to reach devices and services inside the homelab LAN.
-
-Network Flow
-
-Remote workstation
-|
-| Tailscale
-v
-mgmt-01
-|
-| Subnet routing
-v
-192.168.178.0/24
-
-Firewall
-
-UFW remains enabled with a restrictive default policy.
-
-The role explicitly permits routed traffic from:
-
-tailscale0
-
-to:
-
-eth0
-
-for the homelab subnet.
-
-The default routed firewall policy is not globally opened.
-
-IP Forwarding
-
-The role enables:
-
+```text
 net.ipv4.ip_forward = 1
 net.ipv6.conf.all.forwarding = 1
+```
 
-These settings allow mgmt-01 to forward traffic between the Tailscale network and the homelab LAN.
+Route approval and access policy are managed in the Tailscale control plane. Advertising a route does not by itself grant every client access; clients must also use the approved route.
 
-Tailscale Authentication Validation
+## DNS and Application Access
 
-The role validates the Tailscale backend state before advertising routes.
+The `internal_dns` role provides Split DNS for `lab.barouconsulting.nl`. Application records resolve to the gateway's LAN address, where Caddy routes Proxmox, Rancher and Homepage requests. DNS resolution and subnet routing must both work for remote access.
 
-The expected state is:
+Gitea and Jenkins have been retired. Their previous service routes are no longer part of the active platform. GitLab access will be documented after its deployment design is implemented.
 
-Running
+VS Code Remote SSH can also connect directly to `ubuntu-dev-01` at its own Tailscale address, `100.111.185.114`. That is a separate entry point from the subnet router on `mgmt-01`.
 
-If Tailscale is not authenticated or operational, the Ansible run fails instead of continuing with an invalid subnet router configuration.
+## Use and Verify
 
-Route Advertisement
+From `ubuntu-dev-01`:
 
-The role advertises:
+```bash
+cd ~/terraform/barou-platform/configuration/ansible
+ansible mgmt_servers -m ping
+ansible-playbook playbooks/mgmt.yml --limit mgmt_servers --check --diff
+```
 
-192.168.178.0/24
+The playbook includes baseline, security, DNS and reverse-proxy configuration as well as this role. Review all expected changes before applying:
 
-through Tailscale.
+```bash
+ansible-playbook playbooks/mgmt.yml --limit mgmt_servers --diff
+```
 
-Route approval is managed through the Tailscale control plane.
+On `mgmt-01`:
 
-Security Design
+```bash
+tailscale status
+ip -4 -br address
+sysctl net.ipv4.ip_forward net.ipv6.conf.all.forwarding
+sudo ufw status verbose
+sudo systemctl status tailscaled --no-pager
+sudo journalctl -u tailscaled -n 50 --no-pager
+```
 
-The role follows these principles:
+These checks inspect local state. Also test a permitted internal endpoint from an authorized remote client to verify the complete route and policy.
 
-No public exposure of internal management services
-Private remote connectivity through Tailscale
-Explicit firewall forwarding rules
-Infrastructure configuration managed through Ansible
-Authentication state validated before route advertisement
-Default-deny firewall behavior remains intact
-Idempotency
+Check mode may skip authentication or route commands, and a package-key download may predict a change without comparing downloaded content. An actual no-change run is stronger evidence of idempotency than a check-mode recap.
 
-The role is designed to be idempotent.
+## Troubleshooting
 
-A repeated Ansible execution should complete with:
+If local LAN access works but remote access fails, inspect Tailscale authentication, route approval, client routing and access policy. If LAN access also fails, first confirm the destination VM's actual address and host firewall rules.
 
-changed=0
-failed=0
+The gateway previously received `192.168.178.105` through DHCP while inventory expected `.106`. It now uses a Terraform-configured static `.106`. Keep the LAN address, DHCP allocation and Ansible inventory consistent; do not change the inventory to follow an unexpected lease.
 
-Usage
-
-The role is included in:
-
-configuration/ansible/playbooks/mgmt.yml
-
-Example:
-
-roles:
-
-tailscale_router
-Current State
-
-The subnet router is operational and provides remote access to the homelab network through Tailscale.
-
-Validated services include:
-
-Proxmox
-Gitea
-Jenkins
-mgmt-01
+See [Management Platform](../../../../docs/management-platform.md) for the gateway address and host-key recovery procedure.

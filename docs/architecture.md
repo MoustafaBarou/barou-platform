@@ -1,553 +1,111 @@
 # Architecture
 
-## Purpose
-
-This document describes the current and target architecture of the Barou Platform homelab.
-
-The platform is designed as a practical DevOps learning environment focused on automation, Infrastructure as Code, configuration management, CI/CD, containerization, Kubernetes, GitOps, and observability.
-
-The architecture is developed incrementally. Components are introduced in phases and validated before the next platform layer is added.
-
----
-
-## Hardware
-
-Current physical platform:
-
-- HP EliteDesk 800 G5 Mini
-- Intel Core i5-9500T
-- 16 GB RAM
-- 256 GB SSD
-
-The current hardware is sufficient for the initial platform phases, but the complete target platform may require additional memory and storage when multiple services and Kubernetes clusters are running concurrently.
-
-Resource usage will therefore be monitored throughout the project and the platform will be expanded when required.
-
----
-
-## Engineering Principles
-
-The platform follows these engineering principles:
-
-- Automation First
-- Infrastructure as Code
-- Security by Default
-- Git as the Single Source of Truth
-- Reproducible Deployments
-- Fail Fast
-- Least Privilege
-- Small and Reviewable Changes
-- Documentation First
-- Continuous Improvement
-- Simplicity over unnecessary complexity
+Barou Platform is a DevOps learning environment on Proxmox VE. This document separates the implemented platform from the GitLab migration and later GitOps and observability work.
 
-Repeated manual operations are evaluated for automation when they are performed more than twice.
+## Hardware and Availability
 
-Automation must reduce operational risk rather than remove important safety controls.
+| Component | Current configuration |
+|---|---|
+| Host | HP EliteDesk 800 G5 Mini |
+| CPU | Intel Core i5-9500T |
+| RAM | 16 GB |
+| Storage | 256 GB SSD |
+| Hypervisor | Proxmox VE, node `pve` |
 
----
+All VMs depend on one physical host. Kubernetes has one control-plane/etcd node and one worker; the management gateway is also a single instance. This is a learning platform without production high availability.
 
-## Platform Layers
+## Current Platform
 
-The target platform is divided into several logical layers.
+| Layer | Implemented components | Responsibility |
+|---|---|---|
+| Source and review | GitHub, pull requests and rulesets | Public repository and change review |
+| Static CI | GitHub Actions and Azure Pipelines | Shared Terraform and Ansible validation |
+| Administration | `ubuntu-dev-01`, VS Code Remote SSH | Run Git, Terraform, Ansible and kubectl |
+| Infrastructure | Proxmox VE and Terraform | VM lifecycle, resources and Cloud-Init |
+| Host configuration | Ansible roles | OS baseline, firewall, DNS, proxy and RKE2 |
+| Private access | Tailscale, dnsmasq and Caddy on `mgmt-01` | Remote routing, internal DNS and HTTPS |
+| Kubernetes | RKE2, containerd, Cilium, CoreDNS and ingress-nginx | Cluster runtime and application routing |
+| Cluster management | Rancher | Kubernetes management |
+| Visibility | Homepage and Metrics Server | Read-only dashboard and resource metrics |
+| Azure foundation | Separate Azure Terraform roots and verification pipeline | Azure state and workload identity development |
 
-```text
-Physical Hardware
-        ↓
-Proxmox VE
-        ↓
-Virtual Machines
-        ↓
-Infrastructure as Code
-        ↓
-Configuration Management
-        ↓
-Container Platform
-        ↓
-CI/CD Platform
-        ↓
-Kubernetes
-        ↓
-Cluster Management
-        ↓
-GitOps
-        ↓
-Observability
-Current Architecture
+Gitea and Jenkins were earlier Docker Compose learning services. Their VMs, deployment roles, inventory entries, DNS records, reverse-proxy routes and Homepage integrations have been retired. Existing screenshots and Git history may still contain those earlier milestones.
 
-The current environment consists of:
+## Management Boundaries
 
-HP EliteDesk 800 G5 Mini
-        │
-        └── Proxmox VE
-              │
-              ├── ubuntu-dev-01
-              │     ├── Terraform
-              │     ├── Ansible
-              │     ├── Git
-              │     ├── GitHub CLI
-              │     ├── SSH
-              │     ├── Tailscale
-              │     └── Developer workflow automation
-              │
-              ├── ubuntu-tf-01
-              │     └── Terraform-managed Ubuntu VM
-              │
-              └── Ubuntu Cloud-Init template
-                    └── Source template for automated VM provisioning
-Proxmox Virtualization Layer
+Terraform defines the Proxmox VMs in `infrastructure/proxmox/variables.tf`, using `modules/ubuntu-vm`. It clones the Ubuntu Cloud-Init template, sets CPU and memory, connects the virtual NIC, configures initialization and enables the guest agent.
 
-Proxmox VE is the hypervisor for the homelab.
-
-Responsibilities include:
-
-virtual machine lifecycle management;
-virtual networking;
-storage management;
-Cloud-Init integration;
-VM templates;
-resource allocation;
-VM startup configuration;
-QEMU guest agent integration.
+Ansible configures the guest operating systems through SSH. Kubernetes node configuration and workload manifests are separate: Ansible manages RKE2; `kubectl` applies platform manifests. Current static CI performs validation, not those deployment operations.
 
-The Proxmox API is used by Terraform to provision virtual machines automatically.
+```mermaid
+flowchart TD
+    Git["Reviewed Git configuration"] --> TF["Terraform"]
+    Git --> Ansible["Ansible"]
+    Git --> Manifests["Kubernetes manifests"]
+    TF --> VMs["Proxmox VMs"]
+    Ansible -->|SSH configuration| VMs
+    VMs --> Cluster["RKE2 cluster"]
+    Manifests -->|Operator applies| Cluster
+```
 
-Infrastructure as Code
+Proxmox state is local and excluded from Git. Azure state uses a separate Azure Storage backend. Azure environment isolation work must be checked independently; a successful development verification does not prove production access controls or cleanup are complete.
 
-Terraform is responsible for infrastructure provisioning.
+## Network Design
 
-Current responsibilities:
+The LAN is `192.168.178.0/24`, with gateway `192.168.178.1` and Proxmox bridge `vmbr0`.
 
-connecting to the Proxmox API;
-cloning the Ubuntu Cloud-Init template;
-configuring VM resources;
-configuring networking;
-injecting Cloud-Init configuration;
-injecting SSH public keys;
-managing VM lifecycle declaratively.
+| Host | LAN address | Role |
+|---|---|---|
+| `pve` | `192.168.178.10` | Hypervisor/API |
+| `ubuntu-dev-01` | `192.168.178.101` | Administration source |
+| `ubuntu-tf-01` | Inventory target `192.168.178.103` | Ubuntu automation target; Terraform still uses DHCP |
+| `mgmt-01` | Static `192.168.178.106` | DNS, proxy and subnet router |
+| `k8s-cp-01` | Static `192.168.178.110` | Kubernetes API and control plane |
+| `k8s-worker-01` | Static `192.168.178.111` | Worker and ingress endpoint |
 
-Terraform configuration is stored in:
+Tailscale provides remote connectivity. Internal DNS sends application clients to `mgmt-01`. Caddy routes Proxmox requests to `.10:8006`, and Rancher and Homepage requests to `.111:80`, where ingress selects the application by hostname.
 
-infrastructure/proxmox/
+CoreDNS resolves cluster services and forwards the internal lab zone to `.106`. Public queries go to `1.1.1.1` and `9.9.9.9`.
 
-Infrastructure changes are validated through both local automation and GitHub Actions.
+The Kubernetes API firewall explicitly allows the administration sources `.101` and `.102`. The current development VM uses `.101`; `.102` remains a separately configured allowed source. Network reachability, TCP access, TLS and Kubernetes authorization are distinct checks.
 
-Terraform state is currently local and will be migrated to an appropriate remote state solution in a future phase.
+## GitLab Migration
 
-Configuration Management
+GitLab and GitLab Runner are planned replacements for the retired Git hosting and CI services. Neither is currently deployed. GitHub remains the public source and review platform while the new workflow is designed and verified.
 
-Ansible is responsible for operating system and server configuration after Terraform has provisioned the infrastructure.
+The migration must keep Kubernetes and all remaining lab services running. Retiring the 2 GiB Gitea VM and 3 GiB Jenkins VM removes 5 GiB of configured guest allocation; this is not a measurement of available host memory or proof that GitLab fits.
 
-Current responsibilities include:
+Before provisioning, measure host memory, CPU and storage with the remaining workloads running. Account for GitLab, runner jobs, the host and operational headroom. Consult the selected release's [GitLab installation requirements](https://docs.gitlab.com/install/requirements/). The hosting location and final resource allocation remain open until that budget is established.
 
-package installation;
-APT package cache management;
-firewall configuration;
-baseline Ubuntu configuration;
-SSH-based remote configuration.
+The implementation sequence is:
 
-Current Ansible configuration is stored in:
+1. Finish and review the retirement changes and documentation.
+2. Establish GitLab and Runner placement, resources, addressing, TLS and backups.
+3. Run the existing validation script from GitLab CI/CD without deployment credentials.
+4. Verify repository synchronization and branch protection before changing the review workflow.
+5. Add controlled deployment jobs only after state, identity, runner isolation and approval requirements are implemented.
 
-configuration/ansible/
+Azure workload identity and state isolation are separate workstreams. Moving a YAML pipeline alone does not move its authentication or authorization configuration.
 
-The current bootstrap playbook will be refactored into reusable Ansible roles.
+## Future Platform Layers
 
-Planned role structure:
+| Planned component | Intended role | Dependency |
+|---|---|---|
+| Argo CD | Reconcile Kubernetes applications from Git | Repository access and deployment ownership |
+| Prometheus | Collect metrics and support alerting | Capacity and storage |
+| Grafana | Visualize metrics and logs | Data sources and access policy |
+| Loki | Aggregate logs | Capacity, storage and retention |
+| Persistent storage and off-host backups | Protect application data and recover the cluster | Tested storage and restore procedures |
+| Additional nodes or hardware | Increase capacity and reduce failure impact | Resource and availability requirements |
 
-roles/
-├── common
-├── security
-├── docker
-└── monitoring
+Rancher manages clusters; Argo CD is intended to manage workload delivery. Homepage provides visibility and does not replace monitoring or alerting. None of these planned layers should be described as deployed before verification.
 
-Additional roles will be introduced as the platform grows.
+## Engineering and Security Principles
 
-Developer Workflow
+Changes should be small, versioned and reviewable. Infrastructure plans are reviewed before apply; Ansible changes are previewed where supported. Code validation is kept separate from live deployment.
 
-The repository uses an automated local developer workflow.
+Secrets and Terraform state stay outside Git. Integrations receive scoped credentials. SSH host verification remains enabled. Tailscale and host firewalls control access; HTTPS provides internal application transport. Existing Proxmox certificate-verification exceptions are documented in the infrastructure and proxy documentation.
 
-Available commands:
+Further work includes external secret management, credential rotation, backup/restore exercises, network policy and dependency updates. The platform is developed incrementally, with resource usage and failure behavior checked at each step.
 
-git start <branch>
-git validate
-git submit "<commit message>"
-git cleanup
-
-The workflow provides:
-
-Updated main branch
-        ↓
-Feature branch
-        ↓
-Local development
-        ↓
-Explicit staging
-        ↓
-Local validation
-        ↓
-Commit
-        ↓
-Push
-        ↓
-Pull request
-        ↓
-GitHub Actions
-        ↓
-Required status checks
-        ↓
-Automatic squash merge
-        ↓
-Merge verification
-        ↓
-Repository cleanup
-        ↓
-Clean main branch
-
-Supporting scripts are stored in:
-
-scripts/
-
-Detailed workflow documentation is available in:
-
-docs/developer-workflow.md
-GitHub
-
-GitHub remains the public source repository and portfolio for the project.
-
-GitHub currently provides:
-
-public source control;
-pull requests;
-GitHub Actions;
-automated Terraform validation;
-automated Ansible validation;
-repository rulesets;
-required status checks;
-protected main branch;
-automatic squash merge;
-automatic remote branch cleanup.
-
-Direct development on main is not part of the normal workflow.
-
-CI/CD Architecture
-
-The current CI layer uses GitHub Actions.
-
-Current CI checks:
-
-Terraform
-formatting validation;
-Terraform initialization without backend;
-configuration validation.
-Ansible
-dependency installation;
-collection installation;
-playbook syntax validation;
-ansible-lint.
-
-Both jobs are required before a pull request can be merged into main.
-
-The current GitHub-hosted CI runners do not receive access to the private Proxmox API.
-
-Infrastructure-aware Terraform plans will later use a self-hosted runner inside the homelab.
-
-Container Platform
-
-Docker will be introduced after the Ansible role foundation is complete.
-
-Docker will initially be used to run self-hosted platform services before Kubernetes is introduced.
-
-Planned workloads include:
-
-Gitea;
-Jenkins;
-supporting platform services.
-
-Docker installation and configuration will be automated using Ansible.
-
-Gitea
-
-Gitea will provide a self-hosted Git platform inside the homelab.
-
-Its purpose is to provide experience with operating and integrating an internal source control platform.
-
-GitHub will remain the public portfolio and external repository.
-
-The intended model is:
-
-GitHub
-└── Public portfolio and external source repository
-
-Gitea
-└── Self-hosted Git platform for homelab workloads
-Jenkins
-
-Jenkins will be introduced as a self-hosted CI/CD platform.
-
-Its purpose is to provide hands-on experience with:
-
-pipeline configuration;
-agents;
-credentials;
-build automation;
-CI/CD integrations;
-self-hosted runners;
-pipeline troubleshooting.
-
-GitHub Actions will continue to provide repository-level quality gates.
-
-Jenkins will complement GitHub Actions rather than replace it.
-
-Kubernetes Platform
-
-Kubernetes nodes will be provisioned using Terraform.
-
-The Kubernetes distribution selected for the main homelab cluster is RKE2.
-
-RKE2 was selected because it provides a production-oriented Kubernetes distribution while remaining suitable for a homelab learning environment.
-
-The target design is:
-
-Proxmox VE
-    │
-    ├── rke2-cp-01
-    │     └── RKE2 control plane
-    │
-    └── rke2-worker-01
-          └── RKE2 worker node
-
-Additional worker nodes may be added when resources permit.
-
-Rancher
-
-Rancher will be deployed after the RKE2 cluster is operational.
-
-Rancher will provide:
-
-Kubernetes cluster management;
-cluster health visibility;
-lifecycle management;
-RBAC;
-multi-cluster management;
-cluster upgrade management.
-
-The long-term goal is to manage multiple clusters where useful.
-
-Example:
-
-Rancher
-├── dev cluster
-└── prod-lab cluster
-
-Multiple clusters will only be introduced when the available hardware can support them without creating unnecessary resource pressure.
-
-Argo CD
-
-Argo CD will provide GitOps-based application delivery to Kubernetes.
-
-Responsibilities include:
-
-continuously comparing Git with cluster state;
-detecting configuration drift;
-synchronizing Kubernetes workloads;
-declarative application deployment;
-controlled Git-based changes.
-
-Argo CD manages workloads running inside Kubernetes.
-
-Rancher and Argo CD therefore have different responsibilities:
-
-Rancher
-└── Kubernetes cluster management
-
-Argo CD
-└── Kubernetes workload deployment through GitOps
-Observability
-
-The observability stack will be introduced after Rancher and Argo CD.
-
-Planned components:
-
-Prometheus
-Grafana
-Loki
-
-Responsibilities:
-
-Prometheus
-└── Metrics collection
-
-Grafana
-└── Visualization and dashboards
-
-Loki
-└── Centralized log aggregation
-
-These components are expected to run inside Kubernetes once sufficient platform capacity is available.
-
-Target Architecture
-
-The target architecture is:
-
-HP EliteDesk 800 G5 Mini
-        │
-        ▼
-Proxmox VE
-        │
-        ├── Ubuntu development / automation node
-        │       ├── Terraform
-        │       ├── Ansible
-        │       ├── Git
-        │       └── GitHub CLI
-        │
-        ├── Docker platform services
-        │       ├── Gitea
-        │       └── Jenkins
-        │
-        └── Kubernetes infrastructure
-                │
-                ├── RKE2 control plane
-                ├── RKE2 worker node(s)
-                │
-                ├── Rancher
-                │       └── Cluster management
-                │
-                ├── Argo CD
-                │       └── GitOps
-                │
-                └── Observability
-                        ├── Prometheus
-                        ├── Grafana
-                        └── Loki
-
-GitHub remains external to the homelab:
-
-GitHub
-├── Public portfolio
-├── Pull requests
-├── GitHub Actions
-├── Required CI checks
-└── Repository governance
-Network Access
-
-Private homelab administration uses Tailscale.
-
-Current use cases include:
-
-remote SSH access;
-remote Proxmox administration;
-secure access to internal management systems.
-
-Internal Proxmox and Ubuntu services are not exposed directly to the public Internet.
-
-Security Model
-
-Current security principles include:
-
-SSH key authentication;
-passphrase-protected SSH private keys;
-reusable SSH agent using keychain;
-protected main branch;
-required CI checks;
-least-privilege GitHub Actions permissions;
-no Proxmox credentials on GitHub-hosted CI runners;
-secrets excluded from Git;
-Terraform state excluded from Git;
-private infrastructure accessed through Tailscale;
-firewall configuration through Ansible.
-
-Additional security controls will be added as the platform matures.
-
-Resource Considerations
-
-The current host contains 16 GB RAM.
-
-The full target platform contains multiple resource-intensive workloads:
-
-Jenkins;
-Gitea;
-RKE2;
-Rancher;
-Prometheus;
-Grafana;
-Loki.
-
-The entire platform should therefore not be assumed to run concurrently without evaluating resource consumption.
-
-The preferred engineering approach is:
-
-introduce services incrementally;
-measure CPU, memory, and storage consumption;
-optimize resource allocation;
-expand physical resources where justified.
-
-Potential future upgrades include:
-
-additional RAM;
-larger SSD storage;
-additional Proxmox nodes.
-Platform Roadmap
-
-The platform is developed in the following order:
-
-CI/CD automation
-Ansible roles
-Docker
-Gitea + Jenkins
-Kubernetes nodes via Terraform
-RKE2 cluster
-Rancher
-Argo CD
-Prometheus + Grafana + Loki
-
-Each phase builds on the previous phase.
-
-The objective is to understand and automate every platform layer rather than installing all components at once.
-
-Future Expansion
-
-Potential future improvements include:
-
-additional Proxmox hardware;
-Proxmox clustering;
-additional RKE2 worker nodes;
-separate development and production lab clusters;
-Rancher multi-cluster management;
-remote Terraform state;
-infrastructure-aware self-hosted CI runners;
-automated Terraform plan reporting;
-controlled Terraform apply workflows;
-dependency update automation;
-security scanning;
-secrets scanning;
-infrastructure backup automation;
-disaster recovery testing;
-centralized DNS;
-automated certificate management.
-Architecture Goal
-
-The final architecture should demonstrate the complete lifecycle of a modern platform:
-
-Git
- ↓
-CI validation
- ↓
-Infrastructure as Code
- ↓
-Automated provisioning
- ↓
-Configuration management
- ↓
-Containers
- ↓
-Kubernetes
- ↓
-Cluster management
- ↓
-GitOps
- ↓
-Observability
-
-The goal is not simply to install tools.
-
-The goal is to understand how each layer integrates into a secure, automated, reproducible, and maintainable DevOps platform.
+See [Infrastructure Overview](infrastructure-overview.md), [Management Platform](management-platform.md), [Kubernetes Platform](architecture/kubernetes-platform.md) and [CI/CD Architecture](ci-cd.md) for operational details.

@@ -1,39 +1,52 @@
 # CI/CD Architecture
 
-## Overview
+GitHub remains the public source repository and review platform. GitHub Actions and the root Azure pipeline validate infrastructure code. A separate Azure pipeline verifies workload identity access. GitLab and GitLab Runner are planned; Jenkins has been retired.
 
-Barou Platform uses multiple CI systems to validate the same infrastructure repository.
+## Current and Planned Responsibilities
 
-GitHub remains the public source of truth. GitHub Actions provides the primary pull-request checks, while Azure Pipelines provides enterprise-oriented pipeline experience and a foundation for future Azure deployments.
+| System | Status | Responsibility |
+|---|---|---|
+| Local shell on `ubuntu-dev-01` | In use | Validation and explicit operator deployment |
+| GitHub Actions | In use | Pull-request and main-branch validation |
+| `azure-pipelines.yml` | In use | Azure DevOps static CI using the same script |
+| Azure WIF verification pipeline | Development verification has succeeded | Authenticate to Azure and verify backend/access configuration |
+| GitLab CI/CD | Planned | Future GitLab pipeline orchestration |
+| GitLab Runner | Planned | Execute future GitLab jobs |
+| Jenkins | Retired | Historical learning service; no active deployment target |
 
-Local development, GitHub Actions and Azure Pipelines reuse the same validation script.
+Static validation and authenticated access verification are separate workflows. The latter is not evidence that an automated Terraform apply pipeline has been implemented.
+
+## Shared Validation Script
+
+From the repository root:
+
+```bash
+./scripts/validate.sh terraform
+./scripts/validate.sh ansible
+./scripts/validate.sh all
+```
+
+Running without a target also selects all checks. The configured `git validate` alias invokes the shared validation workflow.
+
+Terraform checks cover formatting, initialization with `-backend=false`, and configuration validation. Backend initialization is disabled for this workflow; provider initialization is still required. These checks do not replace an authenticated plan against live infrastructure.
+
+Ansible checks include the bootstrap playbook syntax and ansible-lint. They do not SSH to the managed hosts or apply configuration. Syntax-check a changed operational playbook explicitly when it is outside the script's direct syntax-check target.
 
 ```mermaid
 flowchart TD
-    Developer["Local development"] --> Script["scripts/validate.sh"]
+    Local["Local validation"] --> Script["scripts/validate.sh"]
     GitHub["GitHub Actions"] --> Script
-    Azure["Azure Pipelines"] --> Script
-    Script --> Terraform["Terraform validation"]
-    Script --> Ansible["Ansible validation"]
+    Azure["Azure static CI"] --> Script
+    Script --> TF["Terraform checks"]
+    Script --> Ansible["Ansible checks"]
 ```
-
-## Platforms
-
-| Platform | Purpose |
-|---|---|
-| Local shell | Fast validation before committing |
-| GitHub Actions | Public pull-request and main-branch validation |
-| Azure Pipelines | Enterprise CI and future Azure deployment foundation |
-| Jenkins | Self-hosted CI/CD learning and homelab automation |
-
-The systems currently validate code only. Azure Pipelines does not yet deploy infrastructure.
 
 ## Tool Versions
 
-The CI environments use fixed tool versions to make validation reproducible.
+The documented CI baseline is:
 
 | Tool | Version |
-|---|---:|
+|---|---|
 | Terraform | `1.15.8` |
 | Python | `3.12` |
 | ansible-core | `2.21.2` |
@@ -42,282 +55,95 @@ The CI environments use fixed tool versions to make validation reproducible.
 | community.docker | `5.2.2` |
 | ansible.posix | `2.2.2` |
 
-Terraform configuration accepts Terraform `1.15.x` through:
+The workflow YAML and pinned requirement files are authoritative if a later upgrade changes this table. Compare `.github/workflows/ci.yml`, `azure-pipelines.yml`, `configuration/ansible/requirements-ci.txt` and `configuration/ansible/requirements.yml` when diagnosing version differences.
 
-```hcl
-required_version = "~> 1.15.0"
-```
-
-Tool upgrades are performed as separate changes so that compatibility problems can be identified independently from pipeline changes.
-
-## Shared Validation Script
-
-The central validation entry point is:
-
-```text
-scripts/validate.sh
-```
-
-Supported targets:
-
-```bash
-./scripts/validate.sh terraform
-./scripts/validate.sh ansible
-./scripts/validate.sh all
-```
-
-Running the script without an argument is equivalent to:
-
-```bash
-./scripts/validate.sh all
-```
-
-The Git alias below also runs all validations:
-
-```bash
-git validate
-```
-
-### Terraform validation
-
-The Terraform target performs:
-
-1. tool availability check;
-2. recursive formatting validation;
-3. initialization without the configured backend;
-4. configuration validation.
-
-The backend is disabled during CI:
-
-```text
--backend=false
-```
-
-This prevents validation jobs from accessing or modifying Terraform state.
-
-### Ansible validation
-
-The Ansible target performs:
-
-1. tool availability check;
-2. syntax validation of `playbooks/bootstrap.yml`;
-3. repository-wide ansible-lint validation.
-
-The validation does not connect to managed hosts and does not apply configuration.
+The Proxmox configuration accepts Terraform `~> 1.15.0`. Tool upgrades should be separate, reviewable changes.
 
 ## GitHub Actions
 
-Workflow:
+`.github/workflows/ci.yml` runs Terraform and Ansible validation for pull requests targeting `main` and pushes to `main`. It uses read-only repository permissions and receives no Proxmox deployment credentials.
 
-```text
-.github/workflows/ci.yml
-```
+Terraform and Ansible checks form the repository's existing quality gates. Confirm the checks required by the current ruleset; a message saying no checks were reported is not a successful validation result.
 
-Triggers:
+## Azure Static CI
 
-- pull requests targeting `main`;
-- pushes to `main`.
-
-Jobs:
-
-- Terraform validation;
-- Ansible validation.
-
-The workflow has read-only repository permissions:
-
-```yaml
-permissions:
-  contents: read
-```
-
-No infrastructure credentials are provided to the workflow.
-
-## Azure Pipelines
-
-Pipeline definition:
-
-```text
-azure-pipelines.yml
-```
-
-Azure DevOps configuration:
-
-| Property | Value |
+| Setting | Value |
 |---|---|
 | Organization | `BarouPlatform` |
 | Project | `Platform Engineering` |
 | Repository | `MoustafaBarou/barou-platform` |
+| Definition | `azure-pipelines.yml` |
 | Agent | Microsoft-hosted `ubuntu-latest` |
-| Pipeline type | YAML |
-| Current scope | Validation only |
+| Scope | Static validation |
 
-The pipeline contains one validation stage with two parallel jobs:
+The pipeline runs parallel Terraform and Ansible jobs. Terraform installation uses `TerraformInstaller@1` from the Microsoft DevLabs Terraform extension. The Ansible job installs the pinned Python tools and collections before invoking the shared script.
 
-- Terraform validation;
-- Ansible validation.
+The root pipeline does not apply infrastructure or configure homelab hosts. Keep it distinct from the workload identity verification pipeline when selecting a definition or examining logs.
 
-### Terraform job
-
-The Terraform job:
-
-1. checks out the GitHub repository;
-2. installs Terraform `1.15.8`;
-3. runs `scripts/validate.sh terraform`.
-
-Terraform is installed through `TerraformInstaller@1` from the Microsoft DevLabs Terraform extension.
-
-### Ansible job
-
-The Ansible job:
-
-1. checks out the GitHub repository;
-2. activates Python `3.12`;
-3. installs pinned Python development tools;
-4. installs pinned Ansible collections;
-5. runs `scripts/validate.sh ansible`.
-
-Python tooling is defined in:
-
-```text
-configuration/ansible/requirements-ci.txt
-```
-
-Ansible collections are defined in:
-
-```text
-configuration/ansible/requirements.yml
-```
-
-## Security Model
-
-The CI implementation follows these controls:
-
-- no credentials are committed to Git;
-- no Personal Access Token is stored in the repository;
-- Azure Pipelines has access only to the required GitHub repository;
-- CI jobs use clean, temporary Microsoft-hosted agents;
-- repository checkout is cleaned before each job;
-- Terraform state access is disabled during validation;
-- validation jobs cannot apply Terraform changes;
-- validation jobs do not run Ansible against managed hosts;
-- Azure subscription access is not configured during the CI phase;
-- tool and collection versions are pinned.
-
-## Local Validation
-
-Run all validations before committing:
+To inspect definitions from the CLI:
 
 ```bash
-git validate
+az pipelines list \
+  --organization https://dev.azure.com/BarouPlatform \
+  --project "Platform Engineering" \
+  --query "[].{Id:id,Name:name}" \
+  --output table
 ```
 
-Run the targets separately when troubleshooting:
+Use the returned ID with `az pipelines show --id <id>` and inspect `process.yamlFilename` before queueing a run. Supply the organization and project options unless defaults are already configured.
+
+## Azure Workload Identity Verification
+
+The separate `pipelines/verification/azure-wif-dev.yml` pipeline uses the development service connection to authenticate, check the development deployment boundary, access development Terraform state and validate backend initialization.
+
+The state-isolation branch also checks that production state access is denied. The development verification succeeded after its error handling recognized Azure CLI's permission-denied wording as well as the storage authorization code. An unexpected request failure must not be counted as a successful isolation check.
+
+This is recorded evidence of development verification, not a claim that the state-isolation branch has been merged or that all cleanup is complete. Production identity verification and removal of the old shared-container permissions require their own evidence. Azure state migration and access-control cleanup remain separate from the GitLab migration.
+
+## GitLab CI/CD Migration
+
+GitLab is the selected replacement direction for Gitea and Jenkins. The GitLab server/hosting arrangement, Runner placement and resource budget are not finalized. No working GitLab pipeline is claimed by this documentation.
+
+The migration sequence is:
+
+1. Review the retirement changes and keep existing CI passing.
+2. Establish GitLab access, TLS, repository ownership, backups and Runner capacity without stopping Kubernetes or the remaining services.
+3. Create a validation-only GitLab pipeline that reuses `scripts/validate.sh` and the pinned dependencies.
+4. Verify both successful checks and a deliberately failing validation before depending on the new pipeline.
+5. Define synchronization and review policy while GitHub remains the public repository.
+6. Introduce infrastructure-aware jobs only after runner isolation, credentials, state locking and approval controls are ready.
+
+GitLab Runner executes jobs; it is a separate component from the GitLab application and has its own resource and access requirements. Plan for job concurrency and build load, not only idle service memory. Use the selected release's [installation requirements](https://docs.gitlab.com/install/requirements/) when evaluating self-hosting.
+
+Azure federation is configured for its issuer, audience and subject. Do not assume the existing Azure DevOps service connection can simply be reused by GitLab jobs; that identity integration needs a separate design and verification.
+
+## Security and Deployment Boundaries
+
+- Keep credentials, state, private variable files and kubeconfigs outside Git.
+- Keep static validation jobs free of deployment credentials.
+- Restrict future runners with infrastructure access to trusted code and explicit environments.
+- Review Terraform plans and protect deployment artifacts as potentially sensitive.
+- Preserve environment separation and verify denied access explicitly.
+- Keep Kubernetes and management services running during the migration.
+
+Proxmox Terraform state is currently local. Azure has its own remote-state configuration. A future homelab deployment runner needs a deliberate state and locking solution; it must not operate from an unrelated copy of local state.
+
+## Local Checks and Troubleshooting
 
 ```bash
-./scripts/validate.sh terraform
-./scripts/validate.sh ansible
-```
-
-Check shell syntax:
-
-```bash
+cd ~/terraform/barou-platform
+./scripts/validate.sh all
 bash -n scripts/validate.sh
+git --no-pager diff --check
 ```
 
-Check repository whitespace:
+| Failure | Investigate |
+|---|---|
+| TerraformInstaller task unavailable | Azure DevOps extension availability |
+| Terraform version rejected | Workflow version versus root/module constraints |
+| Ansible dependency failure | Pinned requirements, collection availability and Python compatibility |
+| Local pass, CI fail | Uncommitted files, tool versions, environment dependencies and Linux path case |
+| No PR checks reported | Trigger, target branch, workflow path and repository integration |
+| Authenticated Azure verification fails | Failing task logs, identity, scope and backend settings |
 
-```bash
-git diff --check
-```
-
-## Azure Pipeline Operations
-
-Open the pipeline through:
-
-```text
-Azure DevOps
-  -> Platform Engineering
-  -> Pipelines
-  -> Pipelines
-```
-
-A successful run must show:
-
-- stage `Validate infrastructure code` succeeded;
-- job `Terraform validation` succeeded;
-- job `Ansible validation` succeeded;
-- no step completed with issues.
-
-Open an individual job to inspect installation and validation logs.
-
-## Troubleshooting
-
-### TerraformInstaller task is unavailable
-
-Confirm that the Microsoft DevLabs Terraform extension is installed for the `BarouPlatform` Azure DevOps organization.
-
-The pipeline requires:
-
-```text
-TerraformInstaller@1
-```
-
-### Terraform version is rejected
-
-Compare:
-
-- `terraformVersion` in `azure-pipelines.yml`;
-- `TERRAFORM_VERSION` in `.github/workflows/ci.yml`;
-- `required_version` in the Terraform modules.
-
-The pipeline version must satisfy the Terraform configuration constraint.
-
-### Ansible dependency installation fails
-
-Check:
-
-```text
-configuration/ansible/requirements-ci.txt
-configuration/ansible/requirements.yml
-```
-
-Confirm that the pinned package and collection versions still exist and support Python `3.12`.
-
-### Local validation succeeds but CI fails
-
-Compare the versions printed in the pipeline logs with the versions documented in this file.
-
-Also check:
-
-- operating-system differences;
-- missing environment variables;
-- uncommitted local files;
-- dependencies available locally but missing from requirements files;
-- case-sensitive paths on Linux agents.
-
-### Pipeline does not start for a pull request
-
-Confirm that:
-
-- the pull request targets `main`;
-- Azure Pipelines still has GitHub repository access;
-- the pipeline points to `/azure-pipelines.yml`;
-- PR triggers are enabled;
-- the YAML file exists in the source branch.
-
-## Planned CD Evolution
-
-Future phases will extend Azure Pipelines with:
-
-1. workload identity federation;
-2. an Azure Resource Manager service connection;
-3. remote Terraform state in Azure Storage;
-4. Terraform plan artifacts;
-5. protected Azure DevOps environments;
-6. manual approval before apply;
-7. deployment only from `main`;
-8. separate development and production environments;
-9. least-privilege Azure RBAC;
-10. a self-hosted agent for private homelab deployment targets.
-
-Terraform apply is intentionally excluded until authentication, state management, approval controls and recovery procedures are in place.
+A successful static CI run verifies code quality within its checks. Live plans, connectivity tests and application checks provide different evidence and should be recorded separately.
