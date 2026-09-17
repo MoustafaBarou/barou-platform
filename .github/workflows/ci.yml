@@ -18,6 +18,22 @@ env:
   PYTHON_VERSION: "3.12"
 
 jobs:
+  workflow-tests:
+    name: Workflow automation tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "${{ env.PYTHON_VERSION }}"
+
+      - name: Test submission and recovery with local repositories
+        run: python -B -m unittest discover -s tests -p 'test_submit_platform.py' -v
+
   terraform:
     name: Terraform validation
     runs-on: ubuntu-latest

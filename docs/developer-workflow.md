@@ -1,13 +1,14 @@
 # Developer Workflow
 
-Development takes place through VS Code Remote SSH on `ubuntu-dev-01`. GitHub remains the public repository and pull-request platform. GitLab CI/CD is planned; it has not replaced the current GitHub workflow.
+Development takes place through VS Code Remote SSH on `ubuntu-dev-01`. GitHub hosts the public repository and validation checks. GitLab.com hosts the private project and uses the homelab runner. The platform submission task coordinates both review workflows and synchronizes their `main` branches.
 
 ## Working Environment
 
 | Component | Purpose |
 |---|---|
 | VS Code Remote SSH | Edit files and run commands on the Linux automation host |
-| Git and GitHub CLI | Version control, pull requests and checks |
+| Git, GitHub CLI and GitLab CLI | Version control, review requests, checks and synchronization |
+| Python 3 | Run the platform submission coordinator |
 | Terraform | Validate, plan and apply infrastructure changes |
 | Ansible | Validate and configure hosts |
 | kubectl | Inspect and manage the Kubernetes cluster |
@@ -92,70 +93,53 @@ ansible-playbook playbooks/mgmt.yml --limit mgmt_servers --check --diff
 
 Check mode is a preview where supported. Review its scope and any limitations before applying. Inspect actual service behavior after a live change.
 
-## Submit a Pull Request
+## Submit, Merge and Synchronize
 
-The configured helper is:
-
-```bash
-git submit "docs: update platform architecture"
-```
-
-Its documented workflow validates the change, commits staged files, pushes, creates or reuses a pull request, enables automatic squash merge, waits for merge confirmation and cleans up afterward. **This helper includes merge automation.** Use the manual path if you want to inspect the PR before enabling merge.
-
-The helper scripts under `scripts/` are authoritative. Inspect them when changing the workflow; they are not built-in Git commands.
-
-For manual submission, after validation and staging:
+After reviewing and committing the feature branch, run **Terminal > Run Task >
+Platform: submit, merge and sync** in VS Code. The terminal equivalent is:
 
 ```bash
-git commit -m "docs: update platform architecture"
-git push -u origin HEAD
+git submit
 ```
 
-Write the PR description in a temporary file through VS Code. Explain the problem, what changed, validation results and anything still pending:
+This is the manual action that authorizes submission and merging on both
+platforms. It waits for GitHub validation checks and GitLab CI, merges the GitLab
+MR, updates and validates the GitHub PR, merges it, then synchronizes both `main`
+branches. It preserves merge history rather than squashing independently.
+
+For the existing staged-files workflow, use a message:
 
 ```bash
-code /tmp/barou-pr-body.md
+git submit 'docs: update platform architecture'
 ```
 
-After saving that file:
+The helper validates and commits staged files before submission. It refuses
+unstaged or untracked files. An ordinary commit or push does not start the merge
+coordinator.
+
+Read [Platform submission](platform-submit.md) for prerequisites, the VS Code
+shortcut, exact behavior, preflight and recovery. The same task can resume after
+a network interruption. If neither platform has merged and code needs fixing,
+commit the correction on the same branch and explicitly use `--restart`.
+
+GitHub and GitLab merges are separate operations. If one has already succeeded,
+the helper stops on failure and preserves its record; it never undoes that merge.
+Repository rules remain enforced, and missing checks are not treated as success.
+
+## Manual Recovery
+
+Inspect both remote histories before resolving an interrupted synchronization:
 
 ```bash
-gh pr create --base main \
-  --title "docs: update platform architecture" \
-  --body-file /tmp/barou-pr-body.md
-gh pr checks --watch
+git fetch --all --prune
+git --no-pager log --oneline --graph --all -20
+git --no-pager diff origin/main gitlab/main
+python3 scripts/submit-platform.py --status
 ```
 
-Use a title and description appropriate to the change. Do not treat “no checks reported” as a pass; inspect workflow triggers and required checks.
-
-GitHub Actions provides Terraform and Ansible validation. Azure static CI uses the same validation script. See [CI/CD Architecture](ci-cd.md) for the separate Azure access-verification workflow.
-
-## Merge and Finish the Branch
-
-Review the PR and check results before merging. Once the change is ready and repository rules are satisfied:
-
-```bash
-gh pr merge --squash --delete-branch
-```
-
-A squash merge creates a new commit containing the branch's changes. It does not preserve the original feature commits as ancestors of `main`.
-
-Confirm the PR state using its number before cleanup. Replace `PR_NUMBER` with that number:
-
-```bash
-gh pr view PR_NUMBER --json state,mergedAt,url
-```
-
-After it reports `MERGED`, and with no uncommitted work:
-
-```bash
-git switch main
-git pull --ff-only
-git fetch --prune
-git status --short --branch
-```
-
-The configured `git cleanup` helper can perform normal post-merge cleanup. If Git refuses to delete a squash-merged local branch, first confirm the PR is merged and there are no later local-only changes. A refusal is not a reason to force-delete an unreviewed branch.
+Follow the recovery instructions in [Platform submission](platform-submit.md).
+Keep branches that contain unfinished work. Avoid independently squash-merging
+the same change on both platforms: the coordinator requires shared ancestry.
 
 ## Custom Commands
 
@@ -163,7 +147,7 @@ The configured `git cleanup` helper can perform normal post-merge cleanup. If Gi
 |---|---|
 | `git start <branch>` | Start from an updated `main` with a clean tree |
 | `git validate` | Run Terraform and Ansible validation |
-| `git submit "<message>"` | Validate, commit, push, open PR, enable merge and clean up |
+| `git submit ["<message>"]` | Commit staged files if requested; coordinate GitHub/GitLab checks, merges and synchronization |
 | `git cleanup` | Update `main`, prune references and clean completed branches |
 
 If a helper is unavailable, inspect local aliases:
@@ -195,8 +179,13 @@ k get pods -A
 
 This alias lasts for the current shell unless added to shell configuration. An alias changes typing, not network access or permissions.
 
-## Migration Work
+## Migration Status
 
-The current `feat/gitlab-platform` work retires Gitea and Jenkins and prepares for GitLab. Keep implementation status accurate in PRs: the retirement has been applied in the lab, while GitLab and Runner deployment remain pending.
+Gitea and Jenkins have been retired. GitLab.com and `gitlab-runner-01` are
+operational; the Docker smoke pipeline passed. GitHub Actions continues to
+provide Terraform and Ansible validation, and the Azure workflows remain in use.
 
-Do not change the Git remote or remove existing CI simply because the new platform is planned. Repository synchronization, GitLab checks, runner isolation and deployment ownership must be implemented and verified first. Kubernetes and the remaining lab services must stay running.
+`origin` points to GitHub and `gitlab` points to GitLab.com. The submission task
+keeps their main histories aligned. GitLab Terraform and Ansible validation jobs
+are a separate planned improvement. Kubernetes and the other lab services stay
+running throughout repository submission.
