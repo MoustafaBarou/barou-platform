@@ -1,0 +1,25 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Platform: submit, merge and sync",
+      "detail": "Push the committed feature branch, wait for GitHub/GitLab checks, merge and synchronize both main branches.",
+      "type": "process",
+      "command": "python3",
+      "args": ["${workspaceFolder}/scripts/submit-platform.py"],
+      "options": {"cwd": "${workspaceFolder}"},
+      "presentation": {"reveal": "always", "panel": "dedicated", "clear": false},
+      "runOptions": {"instanceLimit": 1},
+      "problemMatcher": []
+    },
+    {
+      "label": "Platform: submission preflight",
+      "type": "process",
+      "command": "python3",
+      "args": ["${workspaceFolder}/scripts/submit-platform.py", "--check"],
+      "options": {"cwd": "${workspaceFolder}"},
+      "presentation": {"reveal": "always", "panel": "dedicated"},
+      "problemMatcher": []
+    }
+  ]
+}
