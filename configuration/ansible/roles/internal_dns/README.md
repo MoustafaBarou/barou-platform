@@ -1,157 +1,88 @@
-Internal DNS Role
-Purpose
+# Internal DNS Role
 
-The internal_dns role provides internal DNS resolution for the Barou homelab management platform.
+The `internal_dns` role manages dnsmasq on `mgmt-01` for the private `lab.barouconsulting.nl` zone. It installs the service, deploys and validates its configuration, manages DNS firewall rules and restarts dnsmasq when configuration changes.
 
-It allows administrators to use stable internal hostnames instead of remembering IP addresses and service ports.
+## Current Configuration
 
-Responsibilities
+| Setting | Value |
+|---|---|
+| Host | `mgmt-01`, VM 106 |
+| LAN address | `192.168.178.106`, static through Terraform |
+| Tailscale address | `100.72.132.51` |
+| Listening addresses | `127.0.0.1`, `192.168.178.106`, `100.72.132.51` |
+| Upstream resolvers | `1.1.1.1`, `9.9.9.9` |
+| Generated configuration | `/etc/dnsmasq.d/internal-dns.conf` |
+| Desired records | `defaults/main.yml`, variable `internal_dns_records` |
 
-This role manages:
+| DNS name | Address | Purpose |
+|---|---|---|
+| `mgmt.lab.barouconsulting.nl` | `192.168.178.106` | Management host |
+| `proxmox.lab.barouconsulting.nl` | `192.168.178.106` | Caddy proxy to Proxmox |
+| `rancher.lab.barouconsulting.nl` | `192.168.178.106` | Caddy proxy to Rancher ingress |
+| `platform.lab.barouconsulting.nl` | `192.168.178.106` | Caddy proxy to Homepage ingress |
 
-dnsmasq installation
-Internal DNS configuration
-Internal DNS records
-Upstream DNS resolvers
-DNS configuration validation
-DNS service availability
-UFW rules for DNS traffic
-DNS access from Tailscale and the homelab LAN
-Internal DNS Zone
+The Gitea and Jenkins records have been removed. GitLab has no record in this configuration yet.
 
-The internal DNS zone is:
+Application names resolve to the gateway, where Caddy selects the backend by hostname. The `mgmt` DNS record alone does not create a Caddy website.
 
-lab.barouconsulting.nl
+## Resolver Paths
 
-This zone is used only for internal homelab services.
+Tailscale Split DNS sends queries for `lab.barouconsulting.nl` to the gateway's Tailscale address. Other client queries follow the client's normal DNS policy. A subnet route is also needed to reach the LAN address returned for internal applications.
 
-DNS Records
+RKE2 CoreDNS forwards the internal zone to `192.168.178.106`. LAN clients must use the resolver explicitly or have their resolver configured to forward the zone. UFW permits DNS over both TCP and UDP port 53 from the configured LAN and Tailscale sources.
 
-The following records are managed:
+## Apply Configuration
 
-mgmt.lab.barouconsulting.nl
-gitea.lab.barouconsulting.nl
-jenkins.lab.barouconsulting.nl
-proxmox.lab.barouconsulting.nl
+From `ubuntu-dev-01`:
 
-The application hostnames resolve to the management gateway so traffic passes through the reverse proxy.
+```bash
+cd ~/terraform/barou-platform/configuration/ansible
+ansible mgmt_servers -m ping
+ansible-playbook playbooks/mgmt.yml --limit mgmt_servers --check --diff
+```
 
-Current management gateway address:
+`--check` previews supported tasks; `--diff` shows expected configuration changes. The management playbook also includes the baseline, security, Tailscale and reverse-proxy roles. Review that full scope before applying it:
 
-192.168.178.106
+```bash
+ansible-playbook playbooks/mgmt.yml --limit mgmt_servers --diff
+```
 
-DNS Architecture
+For an already configured gateway, the following narrower command starts at the DNS role and then also runs the reverse-proxy tasks. It skips earlier baseline and Tailscale tasks, so it is not a bootstrap command:
 
-Remote workstation
-|
-| Tailscale
-v
-Split DNS
-|
-v
-mgmt-01
-dnsmasq
-|
-v
-lab.barouconsulting.nl
+```bash
+ansible-playbook playbooks/mgmt.yml \
+  --limit mgmt_servers \
+  --start-at-task "internal_dns : Install internal DNS packages" \
+  --diff
+```
 
-Split DNS
+## Verify
 
-Tailscale Split DNS is configured so that only requests for:
+From `ubuntu-dev-01`, query the resolver directly:
 
-lab.barouconsulting.nl
+```bash
+dig @192.168.178.106 mgmt.lab.barouconsulting.nl +short
+dig @192.168.178.106 proxmox.lab.barouconsulting.nl +short
+dig @192.168.178.106 rancher.lab.barouconsulting.nl +short
+dig @192.168.178.106 platform.lab.barouconsulting.nl +short
+```
 
-are sent to the internal DNS resolver.
+Each current record should return `192.168.178.106`. Test normal client resolution separately, without `@192.168.178.106`, to check the client's DNS configuration.
 
-Normal internet DNS resolution remains unchanged.
+On `mgmt-01`:
 
-This prevents the homelab DNS server from becoming the global resolver for remote clients.
+```bash
+sudo dnsmasq --test
+sudo systemctl status dnsmasq --no-pager
+sudo journalctl -u dnsmasq -n 50 --no-pager
+```
 
-Listening Addresses
+`systemctl` shows service state; `journalctl` shows service logs. A successful Ansible restart does not by itself verify resolution from every client.
 
-dnsmasq listens on:
+## Operational Notes
 
-127.0.0.1
-192.168.178.106
-100.72.132.51
+Keep the gateway address stable and coordinate it with the router's DHCP range or reservation. This repository configures the VM's address, but does not prove the router's DHCP configuration is correct.
 
-These addresses provide DNS access locally, from the homelab LAN, and from Tailscale clients.
+If the resolver is unreachable, check the VM's actual address before changing DNS records. See [Management Platform](../../../../docs/management-platform.md).
 
-Upstream DNS
-
-Queries outside the internal homelab zone are forwarded to configured upstream DNS servers.
-
-Current upstream resolvers:
-
-1.1.1.1
-9.9.9.9
-
-Firewall
-
-UFW explicitly permits DNS traffic over:
-
-TCP 53
-UDP 53
-
-from:
-
-Tailscale
-Homelab LAN
-
-The rest of the firewall policy remains restrictive.
-
-Configuration Validation
-
-The generated dnsmasq configuration is validated before deployment.
-
-This prevents an invalid configuration from replacing the active DNS configuration.
-
-Testing
-
-Example DNS validation:
-
-dig @127.0.0.1 gitea.lab.barouconsulting.nl +short
-dig @127.0.0.1 jenkins.lab.barouconsulting.nl +short
-dig @127.0.0.1 proxmox.lab.barouconsulting.nl +short
-dig @127.0.0.1 mgmt.lab.barouconsulting.nl +short
-
-Security Design
-
-The role follows these principles:
-
-Internal-only DNS namespace
-Split DNS instead of replacing global DNS
-Explicit firewall rules
-Configuration validation before deployment
-Infrastructure managed through Ansible
-No public DNS records required for homelab services
-Idempotency
-
-The role is designed to be idempotent.
-
-A repeated Ansible execution should complete with:
-
-changed=0
-failed=0
-
-Usage
-
-The role is included in:
-
-configuration/ansible/playbooks/mgmt.yml
-
-Example:
-
-roles:
-
-internal_dns
-Current State
-
-Internal DNS is operational.
-
-Validated records:
-
-gitea.lab.barouconsulting.nl
-jenkins.lab.barouconsulting.nl
-proxmox.lab.barouconsulting.nl
-mgmt.lab.barouconsulting.nl
+Repeated runs should leave unchanged DNS configuration untouched. Check-mode predictions can differ from actual execution; inspect the task responsible for any reported change rather than treating the recap alone as an idempotency test.

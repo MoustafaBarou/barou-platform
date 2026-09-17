@@ -26,10 +26,6 @@ data:
         style: row
         columns: 3
 
-      DevOps:
-        style: row
-        columns: 3
-
       Infrastructure:
         style: row
         columns: 3
@@ -46,53 +42,6 @@ data:
             description: RKE2 Kubernetes cluster
             namespace: kube-system
             podSelector: app.kubernetes.io/name=rke2-coredns
-
-    - DevOps:
-        - Gitea:
-            icon: gitea.png
-            href: https://gitea.lab.barouconsulting.nl
-            description: Self-hosted Git platform
-            widget:
-              type: gitea
-              url: http://192.168.178.104:3000
-              key: "{{HOMEPAGE_VAR_GITEA_API_TOKEN}}"
-              fields:
-                - repositories
-                - notifications
-                - issues
-                - pulls
-
-        - Jenkins:
-            icon: jenkins.png
-            href: https://jenkins.lab.barouconsulting.nl
-            description: Continuous integration platform
-            widget:
-              type: customapi
-              url: http://192.168.178.105:8080/job/platform-ci-demo/api/json?tree=name,lastBuild%5Bnumber,result,building%5D
-              username: "{{HOMEPAGE_VAR_JENKINS_USERNAME}}"
-              password: "{{HOMEPAGE_VAR_JENKINS_API_TOKEN}}"
-              refreshInterval: 10000
-              mappings:
-                - field: name
-                  label: Job
-                  format: text
-
-                - field: lastBuild.result
-                  label: Status
-                  format: text
-
-                - field: lastBuild.number
-                  label: Build
-                  format: number
-
-                - field: lastBuild.building
-                  label: Running
-                  format: text
-                  remap:
-                    - value: true
-                      to: "Yes"
-                    - value: false
-                      to: "No"
 
     - Infrastructure:
         - Proxmox:

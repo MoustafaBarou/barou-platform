@@ -54,25 +54,13 @@ variable "virtual_machines" {
       memory_mb   = 2048
     }
 
-    gitea-01 = {
-      vm_id       = 104
-      description = "Self-hosted Git service managed by Terraform"
-      cpu_cores   = 2
-      memory_mb   = 2048
-    }
-
-    jenkins-01 = {
-      vm_id       = 105
-      description = "CI automation server managed by Terraform"
-      cpu_cores   = 2
-      memory_mb   = 3072
-    }
-
     mgmt-01 = {
-      vm_id       = 106
-      description = "Management gateway for secure remote access and internal platform services"
-      cpu_cores   = 1
-      memory_mb   = 1536
+      vm_id        = 106
+      description  = "Management gateway for secure remote access and internal platform services"
+      cpu_cores    = 1
+      memory_mb    = 1536
+      ipv4_address = "192.168.178.106/24"
+      ipv4_gateway = "192.168.178.1"
     }
 
     k8s-cp-01 = {

@@ -14,12 +14,6 @@ internal_dns_records:
   - name: mgmt
     address: 192.168.178.106
 
-  - name: gitea
-    address: 192.168.178.106
-
-  - name: jenkins
-    address: 192.168.178.106
-
   - name: proxmox
     address: 192.168.178.106
 

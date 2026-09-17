@@ -1,228 +1,126 @@
 # Kubernetes Platform Architecture
 
-## Purpose
+The RKE2 cluster is operational. Rancher and Homepage are deployed. Argo CD and the Prometheus/Grafana/Loki stack remain planned. GitLab deployment must preserve the running cluster.
 
-This document describes the Kubernetes platform architecture used in the Barou Platform homelab.
+## Nodes and Components
 
-The platform is designed as a practical environment for learning Infrastructure as Code, configuration management, Kubernetes operations, GitOps, observability, security and troubleshooting.
+| Host | Role | Static LAN address | vCPU | Memory |
+|---|---|---|---:|---:|
+| `k8s-cp-01` | RKE2 server, control plane and embedded etcd | `192.168.178.110/24` | 2 | 3072 MiB |
+| `k8s-worker-01` | RKE2 agent | `192.168.178.111/24` | 2 | 2048 MiB |
 
-The goal is not only to deploy Kubernetes, but to manage the complete lifecycle of the platform through code.
+Terraform provisions both VMs. Ansible manages the Linux baseline, security, firewall and RKE2 configuration. RKE2 supplies containerd; the nodes do not require Docker Engine for Kubernetes.
 
-## Current Architecture
+| Component | Function |
+|---|---|
+| Cilium | Pod networking and NetworkPolicy capability |
+| CoreDNS | Cluster DNS and external/internal-zone forwarding |
+| ingress-nginx | Hostname-based application ingress |
+| Metrics Server | Resource metrics for clients such as kubectl and Homepage |
+| Rancher | Kubernetes management in `cattle-system` |
+| Homepage | Read-only platform dashboard in `homepage` |
 
-The Kubernetes infrastructure currently consists of two virtual machines running on Proxmox VE.
+NetworkPolicy capability does not imply that an application isolation policy has been deployed. Hubble is a possible future networking visibility component.
 
-| Hostname | Role | IP Address | vCPU | Memory |
-| --- | --- | --- | ---: | ---: |
-| k8s-cp-01 | RKE2 Control Plane | 192.168.178.110 | 2 | 3072 MB |
-| k8s-worker-01 | RKE2 Worker | 192.168.178.111 | 2 | 2048 MB |
+This topology has one etcd member and one worker. It is not highly available; a second VM on the same physical host would not remove the physical-host failure domain.
 
-The virtual machines are provisioned through Terraform.
+## Provisioning and Deployment
 
-The operating system baseline is configured through Ansible.
+Terraform configuration lives under `infrastructure/proxmox/`. RKE2 configuration is applied through `configuration/ansible/playbooks/rke2.yml`.
 
-## Platform Layers
+The RKE2 playbook configures firewalls, installs the server, obtains its join token and installs the worker. Sensitive join-token handling uses `no_log`; tokens and kubeconfigs remain outside Git.
 
-The platform is divided into multiple management layers.
+Platform manifests live under `kubernetes/platform/`. Their current application is operator-driven. GitHub Actions and Azure static CI validate code; there is no Argo CD reconciliation in place yet.
 
-### Infrastructure
+## Network Configuration
 
-Proxmox VE provides the virtualization platform.
+| Setting | Value |
+|---|---|
+| LAN | `192.168.178.0/24` |
+| Gateway | `192.168.178.1` |
+| Kubernetes API | `https://192.168.178.110:6443` |
+| RKE2 supervisor | `192.168.178.110:9345` |
+| Pod CIDR | `10.42.0.0/16` |
+| Service CIDR | `10.43.0.0/16` |
+| Cluster domain | `cluster.local` |
+| Internal DNS forwarder | `192.168.178.106` for `lab.barouconsulting.nl` |
+| Public DNS forwarders | `1.1.1.1`, `9.9.9.9` |
 
-Terraform manages the lifecycle of Kubernetes virtual machines.
+The CoreDNS configuration is managed by `configuration/ansible/roles/rke2_server/templates/rke2-coredns-config.yaml.j2`.
 
-Responsibilities include:
+The firewall role contains scoped rules for these connections; this table is not an instruction to open the ports to every source:
 
-- VM provisioning
-- VM resource configuration
-- Cloud-Init
-- networking
-- SSH key deployment
-- static IP configuration
+| Port | Protocol | Purpose |
+|---:|---|---|
+| 22 | TCP | SSH administration |
+| 6443 | TCP | Kubernetes API |
+| 9345 | TCP | RKE2 supervisor and registration |
+| 10250 | TCP | Kubelet access |
+| 4240 | TCP | Cilium node health communication |
+| 8472 | UDP | Cilium VXLAN |
+| 80 | TCP | Worker ingress access from the management proxy |
 
-### Operating System Configuration
+`rke2_firewall_admin_ips` allows `.101` and `.102` to reach the control-plane API. `ubuntu-dev-01` currently uses `192.168.178.101`. Worker, pod and proxy rules have their own source restrictions.
 
-Ansible manages the Linux configuration.
+## Application Access
 
-The Kubernetes nodes currently receive:
+DNS resolves Rancher and Homepage names to `mgmt-01` at `.106`. Caddy terminates internal HTTPS and sends HTTP requests to `.111:80`. Kubernetes Ingress rules select the appropriate Service by hostname.
 
-- common operating system configuration
-- security hardening
-- SSH configuration
-- firewall configuration
+| Application | URL | Namespace |
+|---|---|---|
+| Rancher | `https://rancher.lab.barouconsulting.nl` | `cattle-system` |
+| Homepage | `https://platform.lab.barouconsulting.nl` | `homepage` |
 
-Docker is intentionally not installed on the Kubernetes nodes.
+Homepage displays Kubernetes and Proxmox information. Its retired Gitea/Jenkins widget credentials are no longer required.
 
-RKE2 provides its own container runtime based on containerd.
+## Verify Cluster Health
 
-### Kubernetes Distribution
+On `ubuntu-dev-01`:
 
-RKE2 is used as the Kubernetes distribution.
+```bash
+kubectl get nodes -o wide --request-timeout=10s
+kubectl get pods -A --request-timeout=10s
+kubectl get ingress -A
+kubectl top nodes
+```
 
-The initial topology consists of:
+The last recorded node check reported both nodes `Ready`. A node readiness result does not prove every workload is healthy; inspect pod state and application access separately.
 
-- one RKE2 server
-- one RKE2 agent
+## Diagnose an API Timeout
 
-This is intentionally not a highly available cluster.
+Start with one layer at a time. On `ubuntu-dev-01`:
 
-The current homelab hardware has limited resources and the environment is optimized for learning and development.
+```bash
+ip route get 192.168.178.110
+ping -c 3 -W 2 192.168.178.110
+timeout 5 bash -c 'echo > /dev/tcp/192.168.178.110/6443'
+echo "Exit code: $?"
+```
 
-### Container Networking
+`ip route get` shows the selected interface and source address. Ping checks ICMP reachability. The TCP probe checks whether port 6443 can be reached; exit code `124` means the timeout expired. Successful ping does not prove the API port is allowed.
 
-Cilium is the selected Kubernetes CNI.
+On `k8s-cp-01`:
 
-Cilium will provide:
+```bash
+sudo systemctl status rke2-server --no-pager
+sudo ss -lntp 'sport = :6443'
+sudo ufw status numbered
+sudo journalctl -u rke2-server -n 50 --no-pager
+```
 
-- pod networking
-- Kubernetes NetworkPolicy support
-- eBPF-based networking
-- future network observability through Hubble
+`systemctl` checks the service; `ss` checks the listener; `ufw` shows firewall rules; `journalctl` reads recent service logs. A running RKE2 service alone is not proof that remote API access works.
 
-### Cluster Management
+The resolved administration incident had a listening API but only `.102` allowed for administrator access. The client used `.101`. Adding `.101` to the Ansible variable and applying the firewall role restored access without disabling UFW.
 
-Rancher will be deployed after the base RKE2 cluster is operational.
+For a reviewed firewall change, preview from the Ansible directory, then apply without `--check`:
 
-Rancher will provide centralized Kubernetes cluster management.
+```bash
+cd ~/terraform/barou-platform/configuration/ansible
+ansible-playbook playbooks/rke2-firewall.yml --limit k8s_control_plane --check --diff
+```
 
-### GitOps
+## Next Steps
 
-Argo CD will be used for GitOps.
+Keep the cluster running during the GitLab migration. Future work includes persistent storage, off-host etcd backups and restore testing, Argo CD, observability and application network policies. Additional nodes require a capacity review.
 
-Application and platform configuration will gradually move toward a declarative Git-based deployment model.
-
-### Observability
-
-The planned observability stack consists of:
-
-- Prometheus
-- Grafana
-- Loki
-
-Cilium Hubble may later be added for Kubernetes network visibility.
-
-## Architecture Flow
-
-```text
-GitHub / Gitea
-      |
-      v
-CI Validation
-      |
-      v
-Terraform + Ansible
-      |
-      v
-Proxmox VE
-      |
-      +--------------------------+
-      |                          |
-      v                          v
-k8s-cp-01                  k8s-worker-01
-RKE2 Server                RKE2 Agent
-192.168.178.110             192.168.178.111
-      |                          |
-      +------------+-------------+
-                   |
-                   v
-                 RKE2
-                   |
-                   v
-                Cilium
-                   |
-                   v
-                Rancher
-                   |
-                   v
-                Argo CD
-                   |
-         +---------+---------+
-         |                   |
-         v                   v
-     Workloads          Observability
-                        Prometheus
-                        Grafana
-                        Loki
-Network Configuration
-Node Network
-
-Homelab network:
-
-192.168.178.0/24
-
-Default gateway:
-
-192.168.178.1
-
-Control plane:
-
-192.168.178.110
-
-Worker:
-
-192.168.178.111
-Kubernetes Networks
-
-Planned Pod CIDR:
-
-10.42.0.0/16
-
-Planned Service CIDR:
-
-10.43.0.0/16
-
-Cluster domain:
-
-cluster.local
-Important Ports
-Port	Protocol	Purpose
-22	TCP	SSH administration
-6443	TCP	Kubernetes API
-9345	TCP	RKE2 supervisor and node registration
-
-Additional ports will be documented when Rancher, ingress and observability components are deployed.
-
-Security Principles
-
-The Kubernetes platform follows these principles:
-
-Infrastructure as Code
-configuration as code
-no secrets stored in Git
-SSH key authentication
-restrictive firewall policies
-separate control plane and worker roles
-Git-based change management
-idempotent Ansible configuration
-controlled network exposure
-documented operational procedures
-Current State
-
-Completed:
-
-Kubernetes virtual machines provisioned through Terraform
-static IP configuration managed through Terraform
-Ansible inventory configured
-Kubernetes node groups configured
-common Linux baseline applied
-security baseline applied
-idempotency validated
-
-Current result:
-
-k8s-cp-01      changed=0 failed=0
-k8s-worker-01  changed=0 failed=0
-Next Steps
-
-The next implementation steps are:
-
-Deploy the RKE2 server
-Deploy the RKE2 agent
-Validate cluster health
-Configure Cilium
-Deploy Rancher
-Deploy Argo CD
-Implement GitOps workflows
-Deploy Prometheus, Grafana and Loki
-Add controlled failure scenarios
-Document troubleshooting and recovery procedures
+See [RKE2 Runbook](../runbooks/rke2.md), [Kubernetes Troubleshooting](../troubleshooting/kubernetes.md) and [Homepage](../../kubernetes/platform/homepage/README.md).
