@@ -54,6 +54,14 @@ variable "virtual_machines" {
       memory_mb   = 2048
     }
 
+    gitlab-runner-01 = {
+      vm_id        = 107
+      description  = "GitLab CI runner for homelab validation jobs"
+      cpu_cores    = 2
+      memory_mb    = 2048
+      ipv4_address = "dhcp"
+    }
+
     mgmt-01 = {
       vm_id        = 106
       description  = "Management gateway for secure remote access and internal platform services"
