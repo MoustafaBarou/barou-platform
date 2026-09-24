@@ -42,3 +42,34 @@ workflow-tests:
 
   script:
     - python -B -m unittest discover -s tests -p 'test_submit_platform.py' -v
+
+terraform-validation:
+  stage: verify
+  image:
+    name: hashicorp/terraform:1.15.8
+    entrypoint: [""]
+  timeout: 10 minutes
+
+  variables:
+    TF_IN_AUTOMATION: "true"
+
+  before_script:
+    - apk add --no-cache bash git
+
+  script:
+    - ./scripts/validate.sh terraform
+
+ansible-validation:
+  stage: verify
+  image: python:3.12-slim-bookworm
+  timeout: 15 minutes
+
+  before_script:
+    - apt-get update
+    - apt-get install --yes --no-install-recommends git openssh-client ca-certificates
+    - python -m pip install --upgrade pip
+    - python -m pip install --requirement configuration/ansible/requirements-ci.txt
+    - ansible-galaxy collection install --requirements-file configuration/ansible/requirements.yml
+
+  script:
+    - ./scripts/validate.sh ansible
