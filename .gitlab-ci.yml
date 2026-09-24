@@ -65,6 +65,7 @@ ansible-validation:
   timeout: 15 minutes
 
   before_script:
+    - chmod o-w "$CI_PROJECT_DIR/configuration/ansible"
     - apt-get update
     - apt-get install --yes --no-install-recommends git openssh-client ca-certificates
     - python -m pip install --upgrade pip
