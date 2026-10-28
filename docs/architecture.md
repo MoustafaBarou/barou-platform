@@ -58,7 +58,6 @@ The LAN is `192.168.178.0/24`, with gateway `192.168.178.1` and Proxmox bridge `
 |---|---|---|
 | `pve` | `192.168.178.10` | Hypervisor/API |
 | `ubuntu-dev-01` | `192.168.178.101` | Administration source |
-| `ubuntu-tf-01` | Inventory target `192.168.178.103` | Ubuntu automation target; Terraform still uses DHCP |
 | `mgmt-01` | Static `192.168.178.106` | DNS, proxy and subnet router |
 | `k8s-cp-01` | Static `192.168.178.110` | Kubernetes API and control plane |
 | `k8s-worker-01` | Static `192.168.178.111` | Worker and ingress endpoint |
