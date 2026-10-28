@@ -30,7 +30,7 @@ The following inventory reflects the configuration and observations of 28 Octobe
 | 110 | `k8s-cp-01` | Static `192.168.178.110/24` | 2 | 3072 MiB | RKE2 control plane and etcd |
 | 111 | `k8s-worker-01` | Static `192.168.178.111/24` | 2 | 2048 MiB | RKE2 worker |
 
-The last recorded Proxmox inventory also showed stopped VMs 101 (`ubuntu-auto-01`) and 102 (`ubuntu-auto-02`), plus stopped Cloud-Init template 9000. VM 102 is not the current development VM. VMs 104 (`gitea-01`) and 105 (`jenkins-01`) have been removed from the platform. VM 103 (`ubuntu-tf-01`), an idle automation target, was destroyed through Terraform on 2026-10-28 to free host capacity.
+Besides these VMs, Proxmox holds only the stopped Cloud-Init template 9000. Retired VMs: 104 (`gitea-01`) and 105 (`jenkins-01`); 103 (`ubuntu-tf-01`) and 107 (`gitlab-runner-01`), destroyed through Terraform on 2026-10-28 to free host capacity; and the stopped, unmanaged 101 (`ubuntu-auto-01`) and 102 (`ubuntu-auto-02`), deleted through the Proxmox API on 2026-10-28.
 
 ## Capacity
 
