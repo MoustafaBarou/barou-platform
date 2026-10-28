@@ -102,13 +102,13 @@ repository. It stops on merged-results pipelines with a different synthetic SHA.
 It also stops rather than ignore pagination when more than one page of checks or
 jobs would need inspection. Review the coordinator if the CI design changes.
 
-GitLab runs the runner smoke test, the coordinator's regression tests,
+GitLab runs the coordinator's regression tests,
 Terraform formatting and validation, and Ansible syntax and lint checks.
 GitHub and GitLab both use scripts/validate.sh and the same Ansible
 requirements files.
 
-GitLab jobs run on the homelab Docker runner using the homelab and docker
-tags. The runner executes one job at a time. Inspect failed jobs under
+GitLab jobs run on GitLab.com instance runners and use the project's
+compute-minute allowance. Inspect failed jobs under
 Build > Pipelines before retrying the submission.
 
 The task changes repository references and PR/MR state. It does not run Terraform
