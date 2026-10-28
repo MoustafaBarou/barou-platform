@@ -19,8 +19,9 @@ All VMs depend on one physical host. Kubernetes has one control-plane/etcd node 
 | Layer | Implemented components | Responsibility |
 |---|---|---|
 | Source and review | GitHub, pull requests and rulesets | Public repository and change review |
-| Static CI | GitHub Actions and Azure Pipelines | Shared Terraform and Ansible validation |
+| Static CI | GitHub Actions, Azure Pipelines and GitLab CI/CD (GitLab.com instance runners) | Shared Terraform and Ansible validation |
 | Administration | `ubuntu-dev-01`, VS Code Remote SSH | Run Git, Terraform, Ansible and kubectl |
+| Automation | n8n (Docker Compose on `ubuntu-dev-01`) | AI inbox workflows; see `docker/n8n/README.md` |
 | Infrastructure | Proxmox VE and Terraform | VM lifecycle, resources and Cloud-Init |
 | Host configuration | Ansible roles | OS baseline, firewall, DNS, proxy and RKE2 |
 | Private access | Tailscale, dnsmasq and Caddy on `mgmt-01` | Remote routing, internal DNS and HTTPS |
@@ -57,7 +58,7 @@ The LAN is `192.168.178.0/24`, with gateway `192.168.178.1` and Proxmox bridge `
 | Host | LAN address | Role |
 |---|---|---|
 | `pve` | `192.168.178.10` | Hypervisor/API |
-| `ubuntu-dev-01` | `192.168.178.101` | Administration source |
+| `ubuntu-dev-01` | DHCP: `.101` or `.102` (currently `.102`) | Administration source and n8n host |
 | `mgmt-01` | Static `192.168.178.106` | DNS, proxy and subnet router |
 | `k8s-cp-01` | Static `192.168.178.110` | Kubernetes API and control plane |
 | `k8s-worker-01` | Static `192.168.178.111` | Worker and ingress endpoint |
@@ -66,23 +67,13 @@ Tailscale provides remote connectivity. Internal DNS sends application clients t
 
 CoreDNS resolves cluster services and forwards the internal lab zone to `.106`. Public queries go to `1.1.1.1` and `9.9.9.9`.
 
-The Kubernetes API firewall explicitly allows the administration sources `.101` and `.102`. The current development VM uses `.101`; `.102` remains a separately configured allowed source. Network reachability, TCP access, TLS and Kubernetes authorization are distinct checks.
+The Kubernetes API firewall explicitly allows the administration sources `.101` and `.102`. The development VM uses DHCP and has held both addresses; it currently uses `.102`. A DHCP reservation on the LAN router would make this deterministic. Network reachability, TCP access, TLS and Kubernetes authorization are distinct checks.
 
-## GitLab Migration
+## GitLab
 
-GitLab and GitLab Runner are planned replacements for the retired Git hosting and CI services. Neither is currently deployed. GitHub remains the public source and review platform while the new workflow is designed and verified.
+GitLab.com hosts the private mirror of this repository. The submission task keeps GitHub and GitLab `main` aligned and waits for both platforms' checks before merging. GitLab CI/CD runs validation only, on GitLab.com instance runners; no GitLab component runs on the homelab.
 
-The migration must keep Kubernetes and all remaining lab services running. Retiring the 2 GiB Gitea VM and 3 GiB Jenkins VM removes 5 GiB of configured guest allocation; this is not a measurement of available host memory or proof that GitLab fits.
-
-Before provisioning, measure host memory, CPU and storage with the remaining workloads running. Account for GitLab, runner jobs, the host and operational headroom. Consult the selected release's [GitLab installation requirements](https://docs.gitlab.com/install/requirements/). The hosting location and final resource allocation remain open until that budget is established.
-
-The implementation sequence is:
-
-1. Finish and review the retirement changes and documentation.
-2. Establish GitLab and Runner placement, resources, addressing, TLS and backups.
-3. Run the existing validation script from GitLab CI/CD without deployment credentials.
-4. Verify repository synchronization and branch protection before changing the review workflow.
-5. Add controlled deployment jobs only after state, identity, runner isolation and approval requirements are implemented.
+The homelab runner `gitlab-runner-01` (2 vCPU, 2 GiB) was retired in October 2026 together with the idle `ubuntu-tf-01`, because host memory is the limiting resource. Deployment jobs that need homelab access require a new, deliberately sized runner with isolation, state locking and approval controls.
 
 Azure workload identity and state isolation are separate workstreams. Moving a YAML pipeline alone does not move its authentication or authorization configuration.
 

@@ -2,7 +2,7 @@
 
 Barou Platform runs on a single Proxmox host. Terraform provisions VMs, Ansible configures Linux and services, and RKE2 runs Kubernetes workloads. GitHub is the public source repository; GitHub Actions and Azure Pipelines provide code validation.
 
-Gitea and Jenkins have been decommissioned. GitLab and GitLab Runner are planned and are not part of the running inventory yet. Kubernetes and the remaining services must stay running during this migration.
+Gitea, Jenkins, `ubuntu-tf-01` and the homelab GitLab runner have been decommissioned. GitLab.com hosts the private mirror and runs validation on its own instance runners, so no GitLab component runs on the homelab.
 
 ## Physical Platform
 
@@ -21,11 +21,11 @@ A physical-host failure affects the complete lab. There is no production availab
 
 ## Running VM Inventory
 
-The following inventory reflects the recorded September 2026 configuration and observations. VM IDs and IP addresses are independent; a VM ID does not assign the matching IP address.
+The following inventory reflects the configuration and observations of 28 October 2026. VM IDs and IP addresses are independent; a VM ID does not assign the matching IP address.
 
 | VM ID | Host | LAN address | vCPU | Memory | Responsibility |
 |---:|---|---|---:|---:|---|
-| 100 | `ubuntu-dev-01` | Observed `192.168.178.101` | 2 | 4096 MiB | Administration and automation; outside the current Proxmox Terraform VM map |
+| 100 | `ubuntu-dev-01` | DHCP; observed `.101` and `.102` (currently `.102`) | 2 | 4096 MiB | Administration, automation and n8n; outside the current Proxmox Terraform VM map |
 | 106 | `mgmt-01` | Static `192.168.178.106/24` | 1 | 1536 MiB | DNS, Caddy and Tailscale subnet router |
 | 110 | `k8s-cp-01` | Static `192.168.178.110/24` | 2 | 3072 MiB | RKE2 control plane and etcd |
 | 111 | `k8s-worker-01` | Static `192.168.178.111/24` | 2 | 2048 MiB | RKE2 worker |
@@ -34,9 +34,9 @@ The last recorded Proxmox inventory also showed stopped VMs 101 (`ubuntu-auto-01
 
 ## Capacity
 
-The five running VMs above have 12,800 MiB (12.5 GiB) of configured RAM in total. Proxmox itself also requires memory. Configured allocation is not the same as measured host usage or available memory.
+The four running VMs above have 10,752 MiB (10.5 GiB) of configured RAM in total, on a host with about 15.4 GiB usable memory. Proxmox itself also requires memory. Configured allocation is not the same as measured host usage or available memory.
 
-Removing Gitea and Jenkins removed 5120 MiB (5 GiB) of configured allocation. Take fresh measurements before sizing GitLab and its runners. Account for build load, disk growth and host headroom while all remaining services are running.
+Removing Gitea and Jenkins removed 5120 MiB (5 GiB) of configured allocation. Retiring `ubuntu-tf-01` and `gitlab-runner-01` in October 2026 removed another 4096 MiB. Take fresh measurements before sizing any new VM; host memory is the limiting resource.
 
 On `pve`:
 
@@ -72,7 +72,7 @@ The current provider constraint is `bpg/proxmox ~> 0.111`; Terraform is constrai
 
 The provider currently uses `insecure = true`, disabling API certificate verification. This is an existing lab exception, not a production trust model.
 
-The current state lists `mgmt-01`, `gitlab-runner-01` and both Kubernetes VMs. Preserve module/resource addresses when refactoring unless a reviewed migration records the change. Removing a managed VM from the map can propose its destruction; always inspect the plan.
+The current state lists `mgmt-01` and both Kubernetes VMs. Preserve module/resource addresses when refactoring unless a reviewed migration records the change. Removing a managed VM from the map can propose its destruction; always inspect the plan.
 
 From the repository root:
 
@@ -100,7 +100,7 @@ The configuration lives in `configuration/ansible/`, using `inventories/homelab/
 
 | Inventory group | Current targets |
 |---|---|
-| `ubuntu_servers` | `mgmt-01`, `gitlab-runner-01` |
+| `ubuntu_servers` | `mgmt-01` |
 | `mgmt_servers` | `mgmt-01` |
 | `k8s_control_plane` | `k8s-cp-01` |
 | `k8s_workers` | `k8s-worker-01` |
@@ -166,6 +166,6 @@ Proxmox administration uses the authorized host account; the demonstrated sessio
 
 The environment has one physical host, one management gateway, one etcd member and one worker. Persistent Kubernetes storage, off-host backup recovery, full observability and GitOps reconciliation remain incomplete. Some host addressing still depends on DHCP.
 
-The immediate next phase is a capacity-checked GitLab/Runner deployment and validation-only pipeline. Later work includes controlled deployments, Argo CD, persistent storage, backup exercises, stronger secret handling, observability and further Azure development.
+Validation runs on GitHub Actions, Azure Pipelines and GitLab.com. Next work includes controlled deployments, Argo CD, persistent storage, backup exercises, stronger secret handling, observability and further Azure development.
 
 Git is the source of desired configuration. Runtime state, private variables, credentials, kubeconfigs and backups require separate protected storage and must not be committed.

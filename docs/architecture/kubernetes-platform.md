@@ -60,7 +60,7 @@ The firewall role contains scoped rules for these connections; this table is not
 | 8472 | UDP | Cilium VXLAN |
 | 80 | TCP | Worker ingress access from the management proxy |
 
-`rke2_firewall_admin_ips` allows `.101` and `.102` to reach the control-plane API. `ubuntu-dev-01` currently uses `192.168.178.101`. Worker, pod and proxy rules have their own source restrictions.
+`rke2_firewall_admin_ips` allows `.101` and `.102` to reach the control-plane API. `ubuntu-dev-01` uses DHCP and has held both addresses (currently `.102`). Worker, pod and proxy rules have their own source restrictions.
 
 ## Application Access
 
