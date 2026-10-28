@@ -1,373 +1,50 @@
 {
-  "name": "AI Inbox Agent",
-  "nodes": [
-    {
-      "parameters": {
-        "content": "## AI Inbox Agent\n**Mode: label-only** (nothing is moved yet)\n\n1. Create Gmail labels: Te betalen, Reclame, Te checken, AI-Spam\n2. Select credentials on every orange node\n3. Test with Execute workflow, then Publish/Activate\n\nSettings: node **Parse AI result** (CONFIG + LABELS)",
-        "height": 260,
-        "width": 380
-      },
-      "name": "Readme",
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [
-        0,
-        0
-      ],
-      "id": "3ed569b9-0e07-4518-af26-86c200fb27fb"
-    },
-    {
-      "parameters": {
-        "pollTimes": {
-          "item": [
-            {
-              "mode": "everyX",
-              "value": 5,
-              "unit": "minutes"
-            }
-          ]
-        },
-        "simple": false,
-        "filters": {
-          "labelIds": [
-            "INBOX"
-          ]
-        },
-        "options": {}
-      },
-      "name": "Gmail (work)",
-      "type": "n8n-nodes-base.gmailTrigger",
-      "typeVersion": 1.2,
-      "position": [
-        80,
-        352
-      ],
-      "id": "cd1d1da7-9481-474a-a455-2f2f9a514e07",
-      "credentials": {
-        "gmailOAuth2": {
-          "name": "Gmail (werk)"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "pollTimes": {
-          "item": [
-            {
-              "mode": "everyX",
-              "value": 5,
-              "unit": "minutes"
-            }
-          ]
-        },
-        "output": "raw",
-        "filters": {},
-        "options": {}
-      },
-      "name": "Outlook (personal)",
-      "type": "n8n-nodes-base.microsoftOutlookTrigger",
-      "typeVersion": 1,
-      "position": [
-        80,
-        560
-      ],
-      "id": "8591328b-7357-4323-971f-332efc53cd7f",
-      "credentials": {
-        "microsoftOutlookOAuth2Api": {
-          "name": "Outlook (persoonlijk)."
-        }
-      }
-    },
-    {
-      "parameters": {
-        "mode": "runOnceForEachItem",
-        "jsCode": "// Normalize Gmail + Outlook into one format and build the Claude request\nconst m = $json;\nconst isOutlook = !!m.from?.emailAddress || m['@odata.etag'] !== undefined;\nconst strip = s => (s || '')\n  .replace(/<style[\\s\\S]*?<\\/style>/gi, ' ')\n  .replace(/<[^>]+>/g, ' ')\n  .replace(/&nbsp;/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .trim();\n\nconst email = isOutlook ? {\n  source: 'outlook',\n  messageId: m.id,\n  from: m.from?.emailAddress?.address || '',\n  fromName: m.from?.emailAddress?.name || '',\n  subject: m.subject || '',\n  body: strip(m.body?.content || m.bodyPreview).slice(0, 4000),\n} : {\n  source: 'gmail',\n  messageId: m.id,\n  from: m.from?.value?.[0]?.address || m.from?.text || '',\n  fromName: m.from?.value?.[0]?.name || '',\n  subject: m.subject || '',\n  body: (m.text || strip(m.html || m.textAsHtml)).slice(0, 4000),\n};\n\nconst today = new Date().toISOString().slice(0, 10);\nconst system = `You classify emails for an IT consultant in the Netherlands. Today is ${today}.\nReply with ONLY a JSON object, no other text:\n{\"category\":\"payment_due|important|promo|spam\",\"amount\":\"string or null\",\"due_date\":\"YYYY-MM-DD or null\",\"suspicious\":true|false,\"confidence\":0.0-1.0,\"reason\":\"max 15 words\"}\n\nRules:\n- Job and assignment matches are ALWAYS important, never promo: vacancy or assignment notifications (e.g. freelance.nl \"Nieuwe match\", opdrachtmatches), LinkedIn job alerts and job offers, and any mail from recruiters or staffing/intermediary agencies about a role or assignment. This rule overrides the promo rule, even when the mail is automated.\n- payment_due: a real invoice, bill, payment request, reminder (aanmaning) or direct debit notice (incasso) that the user must pay. Extract amount and due date if present.\n- Receipts or confirmations of payments already made are NOT payment_due (use important or promo).\n- important: personal or business mail that needs attention, no payment.\n- promo: newsletters, marketing, ads, offers, automated notifications without action (except job/assignment matches, see above).\n- spam: unsolicited junk or scams.\n- suspicious: true when a payment request looks like phishing: sender domain does not match the company named, urgent pressure, unusual payment method, payment only via a link, or an unexpected invoice.`;\n\nemail.requestBody = {\n  model: 'claude-haiku-5-5',\n  max_tokens: 400,\n  system,\n  messages: [{\n    role: 'user',\n    content: `From: ${email.fromName} <${email.from}>\\nSubject: ${email.subject}\\n\\n${email.body}`,\n  }],\n};\n\nreturn { json: email };\n"
-      },
-      "name": "Normalize + prompt",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        352,
-        464
-      ],
-      "id": "aede800e-40de-4779-a216-5ff21f376762"
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.anthropic.com/v1/messages",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "anthropic-version",
-              "value": "2023-06-01"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json.requestBody) }}",
-        "options": {}
-      },
-      "name": "Claude: classify",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        592,
-        464
-      ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 3000,
-      "id": "56df4626-dcc7-4f90-bbe3-33e6e794b483",
-      "onError": "continueRegularOutput",
-      "credentials": {
-        "httpHeaderAuth": {
-          "name": "Anthropic API key"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "mode": "runOnceForEachItem",
-        "jsCode": "// Parse Claude's answer and decide the label\nconst CONFIG = {\n  MIN_CONFIDENCE: 0.7,     // below this -> \"Te checken\"\n  REMIND_DAYS_BEFORE: 2,   // calendar reminder X days before due date\n};\nconst LABELS = {\n  payment_due: 'Te betalen',\n  promo: 'Reclame',\n  spam: 'AI-Spam',\n  check: 'Te checken',\n  important: null,         // stays in inbox, no label\n};\n\nconst email = $('Normalize + prompt').item.json;\nlet ai = {};\ntry {\n  const text = ($json.content || []).filter(c => c.type === 'text').map(c => c.text).join('');\n  ai = JSON.parse(text.replace(/```json|```/g, '').trim());\n} catch (e) {\n  ai = { category: 'check', confidence: 0, reason: 'AI response could not be parsed' };\n}\n\nlet category = ai.category || 'check';\nif (ai.suspicious === true || Number(ai.confidence ?? 0) < CONFIG.MIN_CONFIDENCE) category = 'check';\n\nlet remindDate = null;\nif (category === 'payment_due' && /^\\d{4}-\\d{2}-\\d{2}$/.test(ai.due_date || '')) {\n  const d = new Date(ai.due_date + 'T09:00:00');\n  d.setDate(d.getDate() - CONFIG.REMIND_DAYS_BEFORE);\n  const tomorrow = new Date();\n  tomorrow.setDate(tomorrow.getDate() + 1);\n  tomorrow.setHours(9, 0, 0, 0);\n  remindDate = (d < new Date() ? tomorrow : d).toISOString();\n}\n\nconst { requestBody, ...rest } = email;\nreturn {\n  json: {\n    ...rest,\n    category,\n    label: LABELS[category] ?? null,\n    amount: ai.amount ?? null,\n    due_date: ai.due_date ?? null,\n    suspicious: !!ai.suspicious,\n    confidence: ai.confidence ?? 0,\n    reason: ai.reason || '',\n    remindDate,\n  },\n};\n"
-      },
-      "name": "Parse AI result",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        832,
-        464
-      ],
-      "id": "1813ef1f-a7b4-4f92-a023-14193c14f259"
-    },
-    {
-      "parameters": {
-        "jsCode": "// Only Gmail mails that need a label\nreturn $input.all().filter(i => i.json.source === 'gmail' && i.json.label);\n"
-      },
-      "name": "Gmail items",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1072,
-        240
-      ],
-      "id": "5ed7b0ba-7399-4ba5-96b3-57cfddefbfde"
-    },
-    {
-      "parameters": {
-        "url": "https://gmail.googleapis.com/gmail/v1/users/me/labels",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "gmailOAuth2",
-        "options": {}
-      },
-      "name": "Gmail: get labels",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        1280,
-        240
-      ],
-      "executeOnce": true,
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 3000,
-      "id": "a9158901-78f6-4ee6-a5b0-3ddefbdbf0cc",
-      "credentials": {
-        "gmailOAuth2": {
-          "name": "Gmail (werk)"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "// Map label names to Gmail label IDs\nconst labels = $input.first().json.labels || [];\nconst byName = Object.fromEntries(labels.map(l => [l.name.toLowerCase(), l.id]));\n\nreturn $('Gmail items').all().map(i => {\n  const id = byName[i.json.label.toLowerCase()];\n  if (!id) throw new Error(`Gmail label \"${i.json.label}\" not found. Create it in Gmail first.`);\n  const addLabelIds = [id];\n  if (i.json.category === 'payment_due') addLabelIds.push('STARRED');\n  return { json: { ...i.json, addLabelIds } };\n});\n"
-      },
-      "name": "Attach label IDs",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1504,
-        240
-      ],
-      "id": "cbe071d8-d449-4d6e-9582-2ab9eb9a7229"
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "=https://gmail.googleapis.com/gmail/v1/users/me/messages/{{ $json.messageId }}/modify",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "gmailOAuth2",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ addLabelIds: $json.addLabelIds }) }}",
-        "options": {}
-      },
-      "name": "Gmail: add label",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        1728,
-        240
-      ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 3000,
-      "id": "7d9c490e-ec1a-433e-855b-532719f8e195",
-      "credentials": {
-        "gmailOAuth2": {
-          "name": "Gmail (werk)"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "// Only Outlook mails that need a category\nreturn $input.all().filter(i => i.json.source === 'outlook' && i.json.label);\n"
-      },
-      "name": "Outlook items",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1072,
-        464
-      ],
-      "id": "537a8fd3-5ff4-49bb-88dc-bef6c16b20b6"
-    },
-    {
-      "parameters": {
-        "method": "PATCH",
-        "url": "=https://graph.microsoft.com/v1.0/me/messages/{{ encodeURIComponent($json.messageId) }}",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "microsoftOutlookOAuth2Api",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json.category === 'payment_due' ? { categories: [$json.label], flag: { flagStatus: 'flagged' } } : { categories: [$json.label] }) }}",
-        "options": {}
-      },
-      "name": "Outlook: set category",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        1280,
-        464
-      ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 3000,
-      "id": "fa86e767-a4c1-4b55-8c29-c191a1cd7a8e",
-      "credentials": {
-        "microsoftOutlookOAuth2Api": {
-          "name": "Outlook (persoonlijk)."
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "// Only payments with a due date -> calendar reminder\nreturn $input.all()\n  .filter(i => i.json.category === 'payment_due' && i.json.remindDate)\n  .map(i => {\n    const start = new Date(i.json.remindDate);\n    const end = new Date(start.getTime() + 30 * 60000);\n    return {\n      json: {\n        ...i.json,\n        calendarEvent: {\n          summary: `💶 Betalen: ${i.json.subject}`,\n          description: `Bedrag: ${i.json.amount ?? 'onbekend'}\\nVervaldatum: ${i.json.due_date}\\nVan: ${i.json.from}\\nMailbox: ${i.json.source}`,\n          start: { dateTime: start.toISOString() },\n          end: { dateTime: end.toISOString() },\n          reminders: { useDefault: true },\n        },\n      },\n    };\n  });\n"
-      },
-      "name": "Payments with due date",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1072,
-        672
-      ],
-      "id": "f423e75b-8a83-4783-9f4c-9d1d5c66bc71"
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://www.googleapis.com/calendar/v3/calendars/primary/events",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "googleCalendarOAuth2Api",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json.calendarEvent) }}",
-        "options": {}
-      },
-      "name": "Calendar: reminder",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        1280,
-        672
-      ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 3000,
-      "id": "b6227aa7-0e52-4402-b09f-bdf9fdf96902",
-      "credentials": {
-        "googleCalendarOAuth2Api": {
-          "name": "Calendar (werk)"
-        }
-      }
-    }
-  ],
+  "active": false,
   "connections": {
+    "Attach label IDs": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Gmail: add label",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Classify email": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Gmail items",
+            "type": "main"
+          },
+          {
+            "index": 0,
+            "node": "Outlook items",
+            "type": "main"
+          },
+          {
+            "index": 0,
+            "node": "Payments with due date",
+            "type": "main"
+          },
+          {
+            "index": 0,
+            "node": "Rows to log",
+            "type": "main"
+          }
+        ]
+      ]
+    },
     "Gmail (work)": {
       "main": [
         [
           {
-            "node": "Normalize + prompt",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Outlook (personal)": {
-      "main": [
-        [
-          {
-            "node": "Normalize + prompt",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Normalize + prompt": {
-      "main": [
-        [
-          {
-            "node": "Claude: classify",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Claude: classify": {
-      "main": [
-        [
-          {
-            "node": "Parse AI result",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Parse AI result": {
-      "main": [
-        [
-          {
-            "node": "Gmail items",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Outlook items",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Payments with due date",
-            "type": "main",
-            "index": 0
+            "index": 0,
+            "node": "Classify email",
+            "type": "main"
           }
         ]
       ]
@@ -376,9 +53,9 @@
       "main": [
         [
           {
+            "index": 0,
             "node": "Gmail: get labels",
-            "type": "main",
-            "index": 0
+            "type": "main"
           }
         ]
       ]
@@ -387,20 +64,20 @@
       "main": [
         [
           {
+            "index": 0,
             "node": "Attach label IDs",
-            "type": "main",
-            "index": 0
+            "type": "main"
           }
         ]
       ]
     },
-    "Attach label IDs": {
+    "Outlook (personal)": {
       "main": [
         [
           {
-            "node": "Gmail: add label",
-            "type": "main",
-            "index": 0
+            "index": 0,
+            "node": "Classify email",
+            "type": "main"
           }
         ]
       ]
@@ -409,9 +86,9 @@
       "main": [
         [
           {
+            "index": 0,
             "node": "Outlook: set category",
-            "type": "main",
-            "index": 0
+            "type": "main"
           }
         ]
       ]
@@ -420,18 +97,392 @@
       "main": [
         [
           {
+            "index": 0,
             "node": "Calendar: reminder",
-            "type": "main",
-            "index": 0
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Rows to log": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Log processed",
+            "type": "main"
           }
         ]
       ]
     }
   },
+  "description": "Classificeert nieuwe mail uit Gmail (werk) en Outlook (persoonlijk) met Claude en zet labels, categorieën en betaalherinneringen",
+  "name": "AI Inbox Agent",
+  "nodes": [
+    {
+      "id": "3ed569b9-0e07-4518-af26-86c200fb27fb",
+      "name": "Readme",
+      "parameters": {
+        "content": "## AI Inbox Agent\n**Mode: label-only** (nothing is moved yet)\n\n1. Create Gmail labels: Te betalen, Reclame, Te checken, AI-Spam\n2. Select credentials on every orange node\n3. Test with Execute workflow, then Publish/Activate\n\nSettings: sub-workflow **Classify email**, node **Parse AI result** (CONFIG + LABELS)",
+        "height": 260,
+        "width": 380
+      },
+      "position": [
+        0,
+        0
+      ],
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1
+    },
+    {
+      "credentials": {
+        "gmailOAuth2": {
+          "name": "Gmail (werk)"
+        }
+      },
+      "id": "cd1d1da7-9481-474a-a455-2f2f9a514e07",
+      "name": "Gmail (work)",
+      "parameters": {
+        "filters": {
+          "labelIds": [
+            "INBOX"
+          ]
+        },
+        "options": {},
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyX",
+              "unit": "minutes",
+              "value": 5
+            }
+          ]
+        },
+        "simple": false
+      },
+      "position": [
+        80,
+        352
+      ],
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2
+    },
+    {
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "name": "Outlook (persoonlijk)."
+        }
+      },
+      "id": "8591328b-7357-4323-971f-332efc53cd7f",
+      "name": "Outlook (personal)",
+      "parameters": {
+        "filters": {},
+        "options": {},
+        "output": "raw",
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyX",
+              "unit": "minutes",
+              "value": 5
+            }
+          ]
+        }
+      },
+      "position": [
+        80,
+        560
+      ],
+      "type": "n8n-nodes-base.microsoftOutlookTrigger",
+      "typeVersion": 1
+    },
+    {
+      "id": "5ed7b0ba-7399-4ba5-96b3-57cfddefbfde",
+      "name": "Gmail items",
+      "parameters": {
+        "jsCode": "// Only Gmail mails that need a label\nreturn $input.all().filter(i => i.json.source === 'gmail' && i.json.label);\n"
+      },
+      "position": [
+        1072,
+        240
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "credentials": {
+        "gmailOAuth2": {
+          "name": "Gmail (werk)"
+        }
+      },
+      "executeOnce": true,
+      "id": "a9158901-78f6-4ee6-a5b0-3ddefbdbf0cc",
+      "maxTries": 3,
+      "name": "Gmail: get labels",
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "gmailOAuth2",
+        "options": {},
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/labels"
+      },
+      "position": [
+        1280,
+        240
+      ],
+      "retryOnFail": true,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "waitBetweenTries": 3000
+    },
+    {
+      "id": "cbe071d8-d449-4d6e-9582-2ab9eb9a7229",
+      "name": "Attach label IDs",
+      "parameters": {
+        "jsCode": "// Map label names to Gmail label IDs\nconst labels = $input.first().json.labels || [];\nconst byName = Object.fromEntries(labels.map(l => [l.name.toLowerCase(), l.id]));\n\nreturn $('Gmail items').all().map(i => {\n  const id = byName[i.json.label.toLowerCase()];\n  if (!id) throw new Error(`Gmail label \"${i.json.label}\" not found. Create it in Gmail first.`);\n  const addLabelIds = [id];\n  if (i.json.category === 'payment_due') addLabelIds.push('STARRED');\n  return { json: { ...i.json, addLabelIds } };\n});\n"
+      },
+      "position": [
+        1504,
+        240
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "credentials": {
+        "gmailOAuth2": {
+          "name": "Gmail (werk)"
+        }
+      },
+      "id": "7d9c490e-ec1a-433e-855b-532719f8e195",
+      "maxTries": 3,
+      "name": "Gmail: add label",
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "jsonBody": "={{ JSON.stringify({ addLabelIds: $json.addLabelIds }) }}",
+        "method": "POST",
+        "nodeCredentialType": "gmailOAuth2",
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "url": "=https://gmail.googleapis.com/gmail/v1/users/me/messages/{{ $json.messageId }}/modify"
+      },
+      "position": [
+        1728,
+        240
+      ],
+      "retryOnFail": true,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "waitBetweenTries": 3000
+    },
+    {
+      "id": "537a8fd3-5ff4-49bb-88dc-bef6c16b20b6",
+      "name": "Outlook items",
+      "parameters": {
+        "jsCode": "// Only Outlook mails that need a category\nreturn $input.all().filter(i => i.json.source === 'outlook' && i.json.label);\n"
+      },
+      "position": [
+        1072,
+        464
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "name": "Outlook (persoonlijk)."
+        }
+      },
+      "id": "fa86e767-a4c1-4b55-8c29-c191a1cd7a8e",
+      "maxTries": 3,
+      "name": "Outlook: set category",
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "jsonBody": "={{ JSON.stringify($json.category === 'payment_due' ? { categories: [$json.label], flag: { flagStatus: 'flagged' } } : { categories: [$json.label] }) }}",
+        "method": "PATCH",
+        "nodeCredentialType": "microsoftOutlookOAuth2Api",
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "url": "=https://graph.microsoft.com/v1.0/me/messages/{{ encodeURIComponent($json.messageId) }}"
+      },
+      "position": [
+        1280,
+        464
+      ],
+      "retryOnFail": true,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "waitBetweenTries": 3000
+    },
+    {
+      "id": "f423e75b-8a83-4783-9f4c-9d1d5c66bc71",
+      "name": "Payments with due date",
+      "parameters": {
+        "jsCode": "// Only payments with a due date -> calendar reminder\nreturn $input.all()\n  .filter(i => i.json.category === 'payment_due' && i.json.remindDate)\n  .map(i => {\n    const start = new Date(i.json.remindDate);\n    const end = new Date(start.getTime() + 30 * 60000);\n    return {\n      json: {\n        ...i.json,\n        calendarEvent: {\n          summary: `💶 Betalen: ${i.json.subject}`,\n          description: `Bedrag: ${i.json.amount ?? 'onbekend'}\\nVervaldatum: ${i.json.due_date}\\nVan: ${i.json.from}\\nMailbox: ${i.json.source}`,\n          start: { dateTime: start.toISOString() },\n          end: { dateTime: end.toISOString() },\n          reminders: { useDefault: true },\n        },\n      },\n    };\n  });\n"
+      },
+      "position": [
+        1072,
+        672
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "name": "Calendar (werk)"
+        }
+      },
+      "id": "b6227aa7-0e52-4402-b09f-bdf9fdf96902",
+      "maxTries": 3,
+      "name": "Calendar: reminder",
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "jsonBody": "={{ JSON.stringify($json.calendarEvent) }}",
+        "method": "POST",
+        "nodeCredentialType": "googleCalendarOAuth2Api",
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "url": "https://www.googleapis.com/calendar/v3/calendars/primary/events"
+      },
+      "position": [
+        1280,
+        672
+      ],
+      "retryOnFail": true,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "waitBetweenTries": 3000
+    },
+    {
+      "id": "c866fc27-f407-4a4b-8660-b64108218200",
+      "name": "Classify email",
+      "parameters": {
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        },
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "cachedResultName": "Classify email",
+          "mode": "id",
+          "value": "Z5CU5y8u5SceiVaq"
+        }
+      },
+      "position": [
+        592,
+        464
+      ],
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4
+    },
+    {
+      "id": "9b7af024-e368-4ac1-a75e-c46938633e1d",
+      "name": "Rows to log",
+      "parameters": {
+        "jsCode": "// Log classified mails to processed_mails (Backlog cleanup skips these); Claude errors are not logged\nreturn $input.all()\n  .filter(i => !i.json.aiError)\n  .map(i => ({ json: {\n    source: i.json.source,\n    messageId: i.json.messageId,\n    category: i.json.category,\n    confidence: Number(i.json.confidence) || 0,\n    reason: i.json.reason || '',\n    processedAt: $now.toISO(),\n  } }));\n",
+        "mode": "runOnceForAllItems"
+      },
+      "position": [
+        1072,
+        880
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "id": "c0d8b397-0bfe-4997-85e2-59dd32496de0",
+      "name": "Log processed",
+      "parameters": {
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "matchingColumns": [],
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "source",
+              "id": "source",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "messageId",
+              "id": "messageId",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "category",
+              "id": "category",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "confidence",
+              "id": "confidence",
+              "required": false,
+              "type": "number"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "reason",
+              "id": "reason",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "processedAt",
+              "id": "processedAt",
+              "required": false,
+              "type": "dateTime"
+            }
+          ],
+          "value": {}
+        },
+        "dataTableId": {
+          "__rl": true,
+          "cachedResultName": "processed_mails",
+          "mode": "id",
+          "value": "vgRGdmoyMQvu195t"
+        },
+        "operation": "insert",
+        "options": {
+          "optimizeBulk": true
+        },
+        "resource": "row"
+      },
+      "position": [
+        1280,
+        880
+      ],
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1
+    }
+  ],
   "settings": {
+    "availableInMCP": true,
+    "binaryMode": "separate",
     "executionOrder": "v1"
   },
-  "pinData": {},
-  "active": false,
   "tags": []
 }
