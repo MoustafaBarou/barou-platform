@@ -1,0 +1,141 @@
+{
+  "active": false,
+  "connections": {
+    "Claude: classify": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Parse AI result",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Email to classify": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Normalize + prompt",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Normalize + prompt": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Claude: classify",
+            "type": "main"
+          }
+        ]
+      ]
+    }
+  },
+  "description": "Gedeelde sub-workflow: normaliseert een Gmail- of Outlook-mail, classificeert met Claude en bepaalt categorie/label. Gebruikt door AI Inbox Agent en Backlog cleanup.",
+  "name": "Classify email",
+  "nodeGroups": [
+    {
+      "description": "Shared by AI Inbox Agent and Backlog cleanup: builds the Claude prompt, classifies, parses category and label",
+      "id": "34cf01c6-fda7-468d-b92f-5dc55262dfaa",
+      "name": "Classification",
+      "nodeIds": [
+        "6704faf6-539f-4ec9-a296-d5980af71743",
+        "f048cf8b-0fff-46d3-83a9-7823da656bd0",
+        "5560ed4a-d7ed-44e9-8cbf-1d76dbbf9632"
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "99ce3236-2b46-4b1e-9068-dbd0e61a16ed",
+      "name": "Email to classify",
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "position": [
+        80,
+        300
+      ],
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.3
+    },
+    {
+      "id": "6704faf6-539f-4ec9-a296-d5980af71743",
+      "name": "Normalize + prompt",
+      "parameters": {
+        "jsCode": "// Normalize Gmail + Outlook into one format and build the Claude request\nconst m = $json;\nconst isOutlook = !!m.from?.emailAddress || m['@odata.etag'] !== undefined;\nconst strip = s => (s || '')\n  .replace(/<style[\\s\\S]*?<\\/style>/gi, ' ')\n  .replace(/<[^>]+>/g, ' ')\n  .replace(/&nbsp;/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .trim();\n\nconst email = isOutlook ? {\n  source: 'outlook',\n  messageId: m.id,\n  from: m.from?.emailAddress?.address || '',\n  fromName: m.from?.emailAddress?.name || '',\n  subject: m.subject || '',\n  body: strip(m.body?.content || m.bodyPreview).slice(0, 4000),\n} : {\n  source: 'gmail',\n  messageId: m.id,\n  from: m.from?.value?.[0]?.address || m.from?.text || '',\n  fromName: m.from?.value?.[0]?.name || '',\n  subject: m.subject || '',\n  body: (m.text || strip(m.html || m.textAsHtml)).slice(0, 4000),\n};\n\nconst today = new Date().toISOString().slice(0, 10);\nconst system = `You classify emails for an IT consultant in the Netherlands. Today is ${today}.\nReply with ONLY a JSON object, no other text:\n{\"category\":\"payment_due|important|promo|spam\",\"amount\":\"string or null\",\"due_date\":\"YYYY-MM-DD or null\",\"suspicious\":true|false,\"confidence\":0.0-1.0,\"reason\":\"max 15 words\"}\n\nRules:\n- Job and assignment matches are ALWAYS important, never promo: vacancy or assignment notifications (e.g. freelance.nl \"Nieuwe match\", opdrachtmatches), LinkedIn job alerts and job offers, and any mail from recruiters or staffing/intermediary agencies about a role or assignment. This rule overrides the promo rule, even when the mail is automated.\n- payment_due: a real invoice, bill, payment request, reminder (aanmaning) or direct debit notice (incasso) that the user must pay. Extract amount and due date if present.\n- Receipts or confirmations of payments already made are NOT payment_due (use important or promo).\n- important: personal or business mail that needs attention, no payment.\n- promo: newsletters, marketing, ads, offers, automated notifications without action (except job/assignment matches, see above).\n- spam: unsolicited junk or scams.\n- suspicious: true when a payment request looks like phishing: sender domain does not match the company named, urgent pressure, unusual payment method, payment only via a link, or an unexpected invoice.`;\n\nemail.requestBody = {\n  model: 'claude-haiku-5-5',\n  max_tokens: 2000,\n  system,\n  output_config: {\n    format: {\n      type: 'json_schema',\n      schema: {\n        type: 'object',\n        properties: {\n          category: { type: 'string', enum: ['payment_due', 'important', 'promo', 'spam'] },\n          amount: { anyOf: [{ type: 'string' }, { type: 'null' }] },\n          due_date: { anyOf: [{ type: 'string', format: 'date' }, { type: 'null' }] },\n          suspicious: { type: 'boolean' },\n          confidence: { type: 'number' },\n          reason: { type: 'string' },\n        },\n        required: ['category', 'amount', 'due_date', 'suspicious', 'confidence', 'reason'],\n        additionalProperties: false,\n      },\n    },\n  },\n  messages: [{\n    role: 'user',\n    content: `From: ${email.fromName} <${email.from}>\\nSubject: ${email.subject}\\n\\n${email.body}`,\n  }],\n};\n\nreturn { json: email };\n",
+        "mode": "runOnceForEachItem"
+      },
+      "position": [
+        320,
+        300
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Anthropic API key"
+        }
+      },
+      "id": "f048cf8b-0fff-46d3-83a9-7823da656bd0",
+      "maxTries": 5,
+      "name": "Claude: classify",
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "contentType": "json",
+        "genericAuthType": "httpHeaderAuth",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            }
+          ]
+        },
+        "jsonBody": "={{ JSON.stringify($json.requestBody) }}",
+        "method": "POST",
+        "options": {},
+        "sendBody": true,
+        "sendHeaders": true,
+        "specifyBody": "json",
+        "url": "https://api.anthropic.com/v1/messages"
+      },
+      "position": [
+        560,
+        300
+      ],
+      "retryOnFail": true,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "waitBetweenTries": 5000
+    },
+    {
+      "id": "5560ed4a-d7ed-44e9-8cbf-1d76dbbf9632",
+      "name": "Parse AI result",
+      "parameters": {
+        "jsCode": "// Parse Claude's answer and decide the label\nconst CONFIG = {\n  MIN_CONFIDENCE: 0.7,     // below this -> \"Te checken\"\n  REMIND_DAYS_BEFORE: 2,   // calendar reminder X days before due date\n};\nconst LABELS = {\n  payment_due: 'Te betalen',\n  promo: 'Reclame',\n  spam: 'AI-Spam',\n  check: 'Te checken',\n  important: null,         // stays in inbox, no label\n};\n\nconst email = $('Normalize + prompt').item.json;\nlet ai = {};\nlet aiError = false;       // true when Claude failed or the answer was unparseable\ntry {\n  const text = ($json.content || []).filter(c => c.type === 'text').map(c => c.text).join('');\n  ai = JSON.parse(text.replace(/```json|```/g, '').trim());\n} catch (e) {\n  ai = { category: 'check', confidence: 0, reason: 'AI response could not be parsed' };\n  aiError = true;\n}\n\nlet category = ai.category || 'check';\nif (ai.suspicious === true || Number(ai.confidence ?? 0) < CONFIG.MIN_CONFIDENCE) category = 'check';\n\nlet remindDate = null;\nif (category === 'payment_due' && /^\\d{4}-\\d{2}-\\d{2}$/.test(ai.due_date || '')) {\n  const d = new Date(ai.due_date + 'T09:00:00');\n  d.setDate(d.getDate() - CONFIG.REMIND_DAYS_BEFORE);\n  const tomorrow = new Date();\n  tomorrow.setDate(tomorrow.getDate() + 1);\n  tomorrow.setHours(9, 0, 0, 0);\n  remindDate = (d < new Date() ? tomorrow : d).toISOString();\n}\n\nconst { requestBody, ...rest } = email;\nreturn {\n  json: {\n    ...rest,\n    category,\n    label: LABELS[category] ?? null,\n    amount: ai.amount ?? null,\n    due_date: ai.due_date ?? null,\n    suspicious: !!ai.suspicious,\n    confidence: ai.confidence ?? 0,\n    reason: ai.reason || '',\n    remindDate,\n    aiError,\n  },\n};\n",
+        "mode": "runOnceForEachItem"
+      },
+      "position": [
+        800,
+        300
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    }
+  ],
+  "settings": {
+    "availableInMCP": true,
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "none"
+  },
+  "tags": []
+}

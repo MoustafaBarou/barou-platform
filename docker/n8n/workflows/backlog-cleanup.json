@@ -1,0 +1,1345 @@
+{
+  "active": false,
+  "connections": {
+    "Classify Gmail": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Gmail: attach label IDs",
+            "type": "main"
+          },
+          {
+            "index": 0,
+            "node": "Gmail: payments due today or later",
+            "type": "main"
+          },
+          {
+            "index": 0,
+            "node": "Wait (Gmail)",
+            "type": "main"
+          },
+          {
+            "index": 0,
+            "node": "Gmail: rows to log",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Classify Outlook": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Outlook: mails to categorize",
+            "type": "main"
+          },
+          {
+            "index": 0,
+            "node": "Outlook: payments due today or later",
+            "type": "main"
+          },
+          {
+            "index": 0,
+            "node": "Wait (Outlook)",
+            "type": "main"
+          },
+          {
+            "index": 0,
+            "node": "Outlook: rows to log",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Count + estimate": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Gmail: get labels",
+            "type": "main"
+          },
+          {
+            "index": 0,
+            "node": "Select Outlook mails",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Gmail: attach label IDs": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Gmail: add label",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Gmail: get labels": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Select Gmail mails",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Gmail: get message": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Classify Gmail",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Gmail: list IDs": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Outlook: list IDs",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Gmail: payments due today or later": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Calendar: reminder (Gmail)",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Gmail: rows to log": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Gmail: log processed",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Loop Gmail": {
+      "main": [
+        [],
+        [
+          {
+            "index": 0,
+            "node": "Gmail: get message",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Loop Outlook": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Summary",
+            "type": "main"
+          }
+        ],
+        [
+          {
+            "index": 0,
+            "node": "Outlook: to fetch",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Outlook: check get": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Outlook: throttled?",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Outlook: check set": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Wait (throttle set)",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Outlook: get message": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Outlook: check get",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Outlook: list IDs": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Processed IDs",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Outlook: mails to categorize": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Outlook: set category",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Outlook: payments due today or later": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Calendar: reminder (Outlook)",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Outlook: rows to log": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Outlook: log processed",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Outlook: set category": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Outlook: check set",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Outlook: throttled?": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Wait (throttle get)",
+            "type": "main"
+          }
+        ],
+        [
+          {
+            "index": 0,
+            "node": "Classify Outlook",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Outlook: to fetch": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Outlook: get message",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Processed IDs": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Count + estimate",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Select Gmail mails": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Loop Gmail",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Select Outlook mails": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Loop Outlook",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Gmail: list IDs",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Start backlog cleanup": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Settings",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Wait (Gmail)": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Loop Gmail",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Wait (Outlook)": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Loop Outlook",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Wait (throttle get)": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Outlook: to fetch",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Wait (throttle set)": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Outlook: mails to categorize",
+            "type": "main"
+          }
+        ]
+      ]
+    }
+  },
+  "description": "Handmatig: labelt bestaande inbox-mail van de afgelopen 12 maanden (Gmail + Outlook) via sub-workflow Classify email. Proefmodus via LIMIT in Settings.",
+  "name": "Backlog cleanup",
+  "nodes": [
+    {
+      "id": "266ac083-5619-4c32-9f83-a1c0e22eeb51",
+      "name": "Sticky Note f5308639",
+      "parameters": {
+        "color": 4,
+        "content": "## Backlog cleanup\nLabels existing inbox mail from the last 12 months with the same prompt as AI Inbox Agent (sub-workflow **Classify email**).\n\n**Settings**: LIMIT per mailbox (0 = all), BATCH_SIZE / WAIT_SECONDS (Gmail), OUTLOOK_BATCH_SIZE / OUTLOOK_WAIT_SECONDS, COUNT_ONLY (true = only count + estimate).\n\nOutlook calls go one at a time (Graph allows 4 concurrent requests per mailbox). On 429/503/504 the batch waits max(Retry-After, 60 s) and retries, up to 5 times.\n\nOutput of **Count + estimate** shows totals and cost before anything is labeled. Processed mails are logged in Data Table **processed_mails** and skipped in later runs. Mails where Claude failed are not logged and are picked up again next run.",
+        "height": 300,
+        "width": 420
+      },
+      "position": [
+        0,
+        0
+      ],
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1
+    },
+    {
+      "id": "53c42d42-171f-4226-a1f8-82fb0d8afbbd",
+      "name": "Start backlog cleanup",
+      "parameters": {},
+      "position": [
+        0,
+        400
+      ],
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1
+    },
+    {
+      "id": "43da3cc3-4ec3-4ee4-8cf9-ae24d846b2b1",
+      "name": "Settings",
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "s-limit",
+              "name": "LIMIT",
+              "type": "number",
+              "value": 1000
+            },
+            {
+              "id": "s-batch",
+              "name": "BATCH_SIZE",
+              "type": "number",
+              "value": 10
+            },
+            {
+              "id": "s-wait",
+              "name": "WAIT_SECONDS",
+              "type": "number",
+              "value": 2
+            },
+            {
+              "id": "s-count",
+              "name": "COUNT_ONLY",
+              "type": "boolean",
+              "value": false
+            },
+            {
+              "id": "s-since",
+              "name": "SINCE",
+              "type": "string",
+              "value": "={{ $now.minus({ months: 12 }).toUTC().toFormat(\"yyyy-MM-dd'T'HH:mm:ss'Z'\") }}"
+            },
+            {
+              "id": "s-obatch",
+              "name": "OUTLOOK_BATCH_SIZE",
+              "type": "number",
+              "value": 5
+            },
+            {
+              "id": "s-owait",
+              "name": "OUTLOOK_WAIT_SECONDS",
+              "type": "number",
+              "value": 3
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "mode": "manual"
+      },
+      "position": [
+        220,
+        400
+      ],
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4
+    },
+    {
+      "credentials": {
+        "gmailOAuth2": {
+          "name": "Gmail (werk)"
+        }
+      },
+      "executeOnce": true,
+      "id": "2e9c74dd-c136-4a58-a8f9-3ca8ad4d08e5",
+      "maxTries": 5,
+      "name": "Gmail: list IDs",
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "method": "GET",
+        "nodeCredentialType": "gmailOAuth2",
+        "options": {
+          "pagination": {
+            "pagination": {
+              "completeExpression": "={{ !$response.body.nextPageToken }}",
+              "paginationCompleteWhen": "other",
+              "paginationMode": "updateAParameterInEachRequest",
+              "parameters": {
+                "parameters": [
+                  {
+                    "name": "pageToken",
+                    "type": "qs",
+                    "value": "={{ $response.body.nextPageToken }}"
+                  }
+                ]
+              },
+              "requestInterval": 200
+            }
+          }
+        },
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "in:inbox newer_than:1y -label:te-betalen -label:reclame -label:te-checken -label:ai-spam"
+            },
+            {
+              "name": "maxResults",
+              "value": "500"
+            }
+          ]
+        },
+        "sendQuery": true,
+        "specifyQuery": "keypair",
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages"
+      },
+      "position": [
+        440,
+        400
+      ],
+      "retryOnFail": true,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "waitBetweenTries": 5000
+    },
+    {
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "name": "Outlook (persoonlijk)."
+        }
+      },
+      "executeOnce": true,
+      "id": "d31469f1-65e5-4b9f-bfb2-bfa8d5f881c8",
+      "maxTries": 5,
+      "name": "Outlook: list IDs",
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "method": "GET",
+        "nodeCredentialType": "microsoftOutlookOAuth2Api",
+        "options": {
+          "pagination": {
+            "pagination": {
+              "completeExpression": "={{ !$response.body['@odata.nextLink'] }}",
+              "nextURL": "={{ $response.body['@odata.nextLink'] }}",
+              "paginationCompleteWhen": "other",
+              "paginationMode": "responseContainsNextURL",
+              "requestInterval": 200
+            }
+          }
+        },
+        "url": "=https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?$filter=receivedDateTime%20ge%20{{ $('Settings').first().json.SINCE }}&$select=id,categories,receivedDateTime&$top=500"
+      },
+      "position": [
+        660,
+        400
+      ],
+      "retryOnFail": true,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "waitBetweenTries": 5000
+    },
+    {
+      "id": "70bf3fd3-6844-4fc0-859e-2a763fad574c",
+      "name": "Count + estimate",
+      "parameters": {
+        "jsCode": "// Count the backlog per mailbox and estimate the Claude cost before anything is labeled\nconst s = $('Settings').first().json;\nconst COST_PER_MAIL_USD = 0.00030; // trial #52: ~2,380 input x $0.10/M + ~125 output x $0.50/M\nconst SECONDS_PER_MAIL = 1.6;      // trial #52: 100 mails in 156 s\n\n// Mails already in processed_mails are skipped\nconst rows = $('Processed IDs').all().map(r => r.json).filter(r => r.messageId);\nconst done = src => new Set(rows.filter(r => r.source === src).map(r => r.messageId));\nconst gmailDone = done('gmail');\nconst outlookDone = done('outlook');\n\nconst gmailIds = [...new Set($('Gmail: list IDs').all().flatMap(p => (p.json.messages || []).map(m => m.id)))];\nconst outlookAll = $('Outlook: list IDs').all().flatMap(p => p.json.value || []);\nconst outlookIds = outlookAll.filter(m => !(m.categories || []).length).map(m => m.id);\nconst gmailTodo = gmailIds.filter(id => !gmailDone.has(id));\nconst outlookTodo = outlookIds.filter(id => !outlookDone.has(id));\n\nconst take = n => (s.LIMIT > 0 ? Math.min(n, s.LIMIT) : n);\nconst gmailThisRun = s.COUNT_ONLY ? 0 : take(gmailTodo.length);\nconst outlookThisRun = s.COUNT_ONLY ? 0 : take(outlookTodo.length);\nconst total = gmailTodo.length + outlookTodo.length;\nconst round = x => Math.round(x * 1000) / 1000;\n\nreturn [{ json: {\n  since: s.SINCE,\n  gmailFound: gmailIds.length,\n  gmailAlreadyProcessed: gmailIds.length - gmailTodo.length,\n  gmailRemaining: gmailTodo.length,\n  outlookInFolder: outlookAll.length,\n  outlookSkippedCategorized: outlookAll.length - outlookIds.length,\n  outlookAlreadyProcessed: outlookIds.length - outlookTodo.length,\n  outlookRemaining: outlookTodo.length,\n  totalRemaining: total,\n  estimatedCostUsdRemaining: round(total * COST_PER_MAIL_USD),\n  estimatedMinutesRemaining: Math.ceil(total * SECONDS_PER_MAIL / 60),\n  limit: s.LIMIT,\n  countOnly: s.COUNT_ONLY,\n  gmailThisRun,\n  outlookThisRun,\n  estimatedCostUsdThisRun: round((gmailThisRun + outlookThisRun) * COST_PER_MAIL_USD),\n  estimatedMinutesThisRun: Math.ceil((gmailThisRun + outlookThisRun) * SECONDS_PER_MAIL / 60),\n} }];\n",
+        "mode": "runOnceForAllItems"
+      },
+      "position": [
+        1100,
+        400
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "credentials": {
+        "gmailOAuth2": {
+          "name": "Gmail (werk)"
+        }
+      },
+      "executeOnce": true,
+      "id": "b0a2b182-1e35-402d-abb7-b5b288ac7703",
+      "maxTries": 5,
+      "name": "Gmail: get labels",
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "method": "GET",
+        "nodeCredentialType": "gmailOAuth2",
+        "options": {},
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/labels"
+      },
+      "position": [
+        1100,
+        200
+      ],
+      "retryOnFail": true,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "waitBetweenTries": 5000
+    },
+    {
+      "id": "98a11e58-f221-4b1a-8628-439e28a982be",
+      "name": "Select Gmail mails",
+      "parameters": {
+        "jsCode": "// Mails for this run: not yet in processed_mails, LIMIT per mailbox (0 = all), none when COUNT_ONLY\nconst c = $('Count + estimate').first().json;\nconst done = new Set($('Processed IDs').all().map(r => r.json).filter(r => r.source === 'gmail').map(r => r.messageId));\nconst ids = [...new Set($('Gmail: list IDs').all().flatMap(p => (p.json.messages || []).map(m => m.id)))]\n  .filter(id => !done.has(id));\nreturn ids.slice(0, c.gmailThisRun).map(id => ({ json: { id } }));\n",
+        "mode": "runOnceForAllItems"
+      },
+      "position": [
+        1320,
+        200
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "credentials": {
+        "gmailOAuth2": {
+          "name": "Gmail (werk)"
+        }
+      },
+      "id": "1300c787-2bdf-4cb6-bea9-c9c679bef8b3",
+      "maxTries": 5,
+      "name": "Gmail: get message",
+      "parameters": {
+        "messageId": "={{ $json.id }}",
+        "operation": "get",
+        "options": {},
+        "resource": "message",
+        "simple": false
+      },
+      "position": [
+        1760,
+        100
+      ],
+      "retryOnFail": true,
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "waitBetweenTries": 5000,
+      "webhookId": "4243d080-365b-4879-8af4-58804958c848"
+    },
+    {
+      "id": "35e1da9b-bf0f-40a6-8b70-c06484aaa906",
+      "name": "Classify Gmail",
+      "parameters": {
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        },
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "cachedResultName": "Classify email",
+          "mode": "id",
+          "value": "Z5CU5y8u5SceiVaq"
+        }
+      },
+      "position": [
+        1980,
+        100
+      ],
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4
+    },
+    {
+      "id": "a21929ad-0fe8-4b12-a80d-07e85899d9b5",
+      "name": "Gmail: attach label IDs",
+      "parameters": {
+        "jsCode": "// Only mails with a label; Claude errors are skipped so a next run retries them\nconst labels = $('Gmail: get labels').first().json.labels || [];\nconst byName = Object.fromEntries(labels.map(l => [l.name.toLowerCase(), l.id]));\n\nreturn $input.all()\n  .filter(i => !i.json.aiError && i.json.label)\n  .map(i => {\n    const id = byName[i.json.label.toLowerCase()];\n    if (!id) throw new Error(`Gmail label \"${i.json.label}\" not found. Create it in Gmail first.`);\n    const addLabelIds = [id];\n    if (i.json.category === 'payment_due') addLabelIds.push('STARRED');\n    return { json: { ...i.json, addLabelIds } };\n  });\n",
+        "mode": "runOnceForAllItems"
+      },
+      "position": [
+        2200,
+        -40
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "credentials": {
+        "gmailOAuth2": {
+          "name": "Gmail (werk)"
+        }
+      },
+      "id": "67887783-9f2e-41a7-905d-efb57d872992",
+      "maxTries": 5,
+      "name": "Gmail: add label",
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "contentType": "json",
+        "jsonBody": "={{ JSON.stringify({ addLabelIds: $json.addLabelIds }) }}",
+        "method": "POST",
+        "nodeCredentialType": "gmailOAuth2",
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "url": "=https://gmail.googleapis.com/gmail/v1/users/me/messages/{{ $json.messageId }}/modify"
+      },
+      "position": [
+        2420,
+        -40
+      ],
+      "retryOnFail": true,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "waitBetweenTries": 5000
+    },
+    {
+      "id": "c1c7c961-5428-45ca-bf29-32cfac643037",
+      "name": "Loop Gmail",
+      "parameters": {
+        "batchSize": "={{ $('Settings').first().json.BATCH_SIZE }}",
+        "options": {}
+      },
+      "position": [
+        1540,
+        200
+      ],
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3
+    },
+    {
+      "id": "b1b1539d-771d-473a-b0f5-7aa276c21d36",
+      "name": "Gmail: payments due today or later",
+      "parameters": {
+        "jsCode": "// Calendar reminder only when the due date is today or later; old invoices get the label only\nconst today = $now.toFormat('yyyy-MM-dd');\nreturn $input.all()\n  .filter(i => !i.json.aiError && i.json.category === 'payment_due' && i.json.remindDate\n    && /^\\d{4}-\\d{2}-\\d{2}$/.test(i.json.due_date || '') && i.json.due_date >= today)\n  .map(i => {\n    const start = new Date(i.json.remindDate);\n    const end = new Date(start.getTime() + 30 * 60000);\n    return {\n      json: {\n        ...i.json,\n        calendarEvent: {\n          summary: `💶 Betalen: ${i.json.subject}`,\n          description: `Bedrag: ${i.json.amount ?? 'onbekend'}\\nVervaldatum: ${i.json.due_date}\\nVan: ${i.json.from}\\nMailbox: ${i.json.source}`,\n          start: { dateTime: start.toISOString() },\n          end: { dateTime: end.toISOString() },\n          reminders: { useDefault: true },\n        },\n      },\n    };\n  });\n",
+        "mode": "runOnceForAllItems"
+      },
+      "position": [
+        2200,
+        120
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "name": "Calendar (werk)"
+        }
+      },
+      "id": "f36625bf-fe77-4aae-80b5-2320369c9219",
+      "maxTries": 5,
+      "name": "Calendar: reminder (Gmail)",
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "contentType": "json",
+        "jsonBody": "={{ JSON.stringify($json.calendarEvent) }}",
+        "method": "POST",
+        "nodeCredentialType": "googleCalendarOAuth2Api",
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "url": "https://www.googleapis.com/calendar/v3/calendars/primary/events"
+      },
+      "position": [
+        2420,
+        120
+      ],
+      "retryOnFail": true,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "waitBetweenTries": 5000
+    },
+    {
+      "id": "2bdead10-2cb6-42f6-9eff-7ce36d6fc403",
+      "name": "Wait (Gmail)",
+      "parameters": {
+        "amount": "={{ $('Settings').first().json.WAIT_SECONDS }}",
+        "resume": "timeInterval",
+        "unit": "seconds"
+      },
+      "position": [
+        2200,
+        340
+      ],
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "webhookId": "0f1137ff-03db-4718-8ae2-69d5952b41d9"
+    },
+    {
+      "id": "45ada670-5c43-4738-8217-95367a757bd2",
+      "name": "Select Outlook mails",
+      "parameters": {
+        "jsCode": "// Mails for this run: uncategorized and not yet in processed_mails, LIMIT per mailbox (0 = all), none when COUNT_ONLY\nconst c = $('Count + estimate').first().json;\nconst done = new Set($('Processed IDs').all().map(r => r.json).filter(r => r.source === 'outlook').map(r => r.messageId));\nconst ids = $('Outlook: list IDs').all()\n  .flatMap(p => p.json.value || [])\n  .filter(m => !(m.categories || []).length && !done.has(m.id))\n  .map(m => m.id);\nreturn ids.slice(0, c.outlookThisRun).map(id => ({ json: { id } }));\n",
+        "mode": "runOnceForAllItems"
+      },
+      "position": [
+        1320,
+        700
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "id": "45367d7f-13e5-47a0-8edc-810292f83fc4",
+      "name": "Summary",
+      "parameters": {
+        "jsCode": "// Run report: counts per mailbox and category, plus the mails worth a look\nconst today = $now.toFormat('yyyy-MM-dd');\nconst results = [];\ntry { results.push(...$('Loop Gmail').all(0).map(i => i.json)); } catch (e) {}\nresults.push(...$input.all().map(i => i.json));\n\nconst perSourceCategory = {};\nfor (const r of results) {\n  const key = `${r.source}/${r.aiError ? 'ai_error' : r.category}`;\n  perSourceCategory[key] = (perSourceCategory[key] || 0) + 1;\n}\nconst pick = r => ({ source: r.source, from: r.from, subject: r.subject, category: r.category, amount: r.amount, due_date: r.due_date, suspicious: r.suspicious, confidence: r.confidence, reason: r.reason });\n\nreturn [{ json: {\n  processed: results.length,\n  perSourceCategory,\n  remindersCreated: results.filter(r => !r.aiError && r.category === 'payment_due' && r.remindDate && (r.due_date || '') >= today).length,\n  payments: results.filter(r => r.category === 'payment_due').map(pick),\n  toCheck: results.filter(r => r.category === 'check' && !r.aiError).map(pick),\n  aiErrors: results.filter(r => r.aiError).map(pick),\n} }];\n",
+        "mode": "runOnceForAllItems"
+      },
+      "position": [
+        1760,
+        900
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "name": "Outlook (persoonlijk)."
+        }
+      },
+      "id": "9ea51222-2196-4692-bc23-5bf35f49ecbd",
+      "maxTries": 3,
+      "name": "Outlook: get message",
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "method": "GET",
+        "nodeCredentialType": "microsoftOutlookOAuth2Api",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchInterval": 100,
+              "batchSize": 1
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        },
+        "url": "=https://graph.microsoft.com/v1.0/me/messages/{{ encodeURIComponent($json.id) }}"
+      },
+      "position": [
+        1760,
+        600
+      ],
+      "retryOnFail": true,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "waitBetweenTries": 5000
+    },
+    {
+      "id": "b2feca8a-fa1e-4f36-9c87-bb21aa6dc07a",
+      "name": "Classify Outlook",
+      "parameters": {
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        },
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "cachedResultName": "Classify email",
+          "mode": "id",
+          "value": "Z5CU5y8u5SceiVaq"
+        }
+      },
+      "position": [
+        1980,
+        600
+      ],
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4
+    },
+    {
+      "id": "8732b1d4-7c56-4c8c-b413-ade04452960c",
+      "name": "Outlook: mails to categorize",
+      "parameters": {
+        "jsCode": "// Only mails with a label; Claude errors are skipped so a next run retries them\nreturn $input.all().filter(i => !i.json.aiError && i.json.label);\n",
+        "mode": "runOnceForAllItems"
+      },
+      "position": [
+        2200,
+        460
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "name": "Outlook (persoonlijk)."
+        }
+      },
+      "id": "6032cd33-5628-4f3f-b260-fceb5438d690",
+      "maxTries": 3,
+      "name": "Outlook: set category",
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "contentType": "json",
+        "jsonBody": "={{ JSON.stringify($json.category === 'payment_due' ? { categories: [$json.label], flag: { flagStatus: 'flagged' } } : { categories: [$json.label] }) }}",
+        "method": "PATCH",
+        "nodeCredentialType": "microsoftOutlookOAuth2Api",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchInterval": 100,
+              "batchSize": 1
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "url": "=https://graph.microsoft.com/v1.0/me/messages/{{ encodeURIComponent($json.messageId) }}"
+      },
+      "position": [
+        2420,
+        460
+      ],
+      "retryOnFail": true,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "waitBetweenTries": 5000
+    },
+    {
+      "id": "18279c78-0da1-42f9-ba1b-e3cd3e04a74a",
+      "name": "Loop Outlook",
+      "parameters": {
+        "batchSize": "={{ $('Settings').first().json.OUTLOOK_BATCH_SIZE }}",
+        "options": {}
+      },
+      "position": [
+        1540,
+        700
+      ],
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3
+    },
+    {
+      "id": "77437ac5-7699-4053-acb6-15f1f1338d7b",
+      "name": "Outlook: payments due today or later",
+      "parameters": {
+        "jsCode": "// Calendar reminder only when the due date is today or later; old invoices get the label only\nconst today = $now.toFormat('yyyy-MM-dd');\nreturn $input.all()\n  .filter(i => !i.json.aiError && i.json.category === 'payment_due' && i.json.remindDate\n    && /^\\d{4}-\\d{2}-\\d{2}$/.test(i.json.due_date || '') && i.json.due_date >= today)\n  .map(i => {\n    const start = new Date(i.json.remindDate);\n    const end = new Date(start.getTime() + 30 * 60000);\n    return {\n      json: {\n        ...i.json,\n        calendarEvent: {\n          summary: `💶 Betalen: ${i.json.subject}`,\n          description: `Bedrag: ${i.json.amount ?? 'onbekend'}\\nVervaldatum: ${i.json.due_date}\\nVan: ${i.json.from}\\nMailbox: ${i.json.source}`,\n          start: { dateTime: start.toISOString() },\n          end: { dateTime: end.toISOString() },\n          reminders: { useDefault: true },\n        },\n      },\n    };\n  });\n",
+        "mode": "runOnceForAllItems"
+      },
+      "position": [
+        2200,
+        620
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "name": "Calendar (werk)"
+        }
+      },
+      "id": "bc679efc-33fa-4035-8633-61ece8c6d4a1",
+      "maxTries": 5,
+      "name": "Calendar: reminder (Outlook)",
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "contentType": "json",
+        "jsonBody": "={{ JSON.stringify($json.calendarEvent) }}",
+        "method": "POST",
+        "nodeCredentialType": "googleCalendarOAuth2Api",
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "url": "https://www.googleapis.com/calendar/v3/calendars/primary/events"
+      },
+      "position": [
+        2420,
+        620
+      ],
+      "retryOnFail": true,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "waitBetweenTries": 5000
+    },
+    {
+      "id": "e9b4b1a1-5c47-4899-a1f4-599010fc0db1",
+      "name": "Wait (Outlook)",
+      "parameters": {
+        "amount": "={{ $('Settings').first().json.OUTLOOK_WAIT_SECONDS }}",
+        "resume": "timeInterval",
+        "unit": "seconds"
+      },
+      "position": [
+        2200,
+        840
+      ],
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "webhookId": "bf843222-8b31-410b-a773-8b100733d8c7"
+    },
+    {
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "id": "13a1e31d-21ad-460b-8e0f-adcab5936cd4",
+      "name": "Processed IDs",
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "cachedResultName": "processed_mails",
+          "mode": "id",
+          "value": "vgRGdmoyMQvu195t"
+        },
+        "operation": "get",
+        "resource": "row",
+        "returnAll": true
+      },
+      "position": [
+        880,
+        400
+      ],
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1
+    },
+    {
+      "id": "eb98c3c0-9b12-4f4d-84a1-798b2a6aa886",
+      "name": "Gmail: rows to log",
+      "parameters": {
+        "jsCode": "// Log classified mails to processed_mails so later runs skip them; Claude errors are not logged and get retried\nreturn $input.all()\n  .filter(i => !i.json.aiError)\n  .map(i => ({ json: {\n    source: i.json.source,\n    messageId: i.json.messageId,\n    category: i.json.category,\n    confidence: Number(i.json.confidence) || 0,\n    reason: i.json.reason || '',\n    processedAt: $now.toISO(),\n  } }));\n",
+        "mode": "runOnceForAllItems"
+      },
+      "position": [
+        2200,
+        220
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "id": "b8d8c41d-f757-49cf-b208-e062029d2ee9",
+      "name": "Gmail: log processed",
+      "parameters": {
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "matchingColumns": [],
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "source",
+              "id": "source",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "messageId",
+              "id": "messageId",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "category",
+              "id": "category",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "confidence",
+              "id": "confidence",
+              "required": false,
+              "type": "number"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "reason",
+              "id": "reason",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "processedAt",
+              "id": "processedAt",
+              "required": false,
+              "type": "dateTime"
+            }
+          ],
+          "value": {}
+        },
+        "dataTableId": {
+          "__rl": true,
+          "cachedResultName": "processed_mails",
+          "mode": "id",
+          "value": "vgRGdmoyMQvu195t"
+        },
+        "operation": "insert",
+        "options": {
+          "optimizeBulk": true
+        },
+        "resource": "row"
+      },
+      "position": [
+        2420,
+        220
+      ],
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1
+    },
+    {
+      "id": "0ef0c62f-5142-4075-bc78-6866a6824c01",
+      "name": "Outlook: rows to log",
+      "parameters": {
+        "jsCode": "// Log classified mails to processed_mails so later runs skip them; Claude errors are not logged and get retried\nreturn $input.all()\n  .filter(i => !i.json.aiError)\n  .map(i => ({ json: {\n    source: i.json.source,\n    messageId: i.json.messageId,\n    category: i.json.category,\n    confidence: Number(i.json.confidence) || 0,\n    reason: i.json.reason || '',\n    processedAt: $now.toISO(),\n  } }));\n",
+        "mode": "runOnceForAllItems"
+      },
+      "position": [
+        2200,
+        720
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "id": "573dd34e-936d-48d4-929f-445f29092c77",
+      "name": "Outlook: log processed",
+      "parameters": {
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "matchingColumns": [],
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "source",
+              "id": "source",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "messageId",
+              "id": "messageId",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "category",
+              "id": "category",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "confidence",
+              "id": "confidence",
+              "required": false,
+              "type": "number"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "reason",
+              "id": "reason",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "processedAt",
+              "id": "processedAt",
+              "required": false,
+              "type": "dateTime"
+            }
+          ],
+          "value": {}
+        },
+        "dataTableId": {
+          "__rl": true,
+          "cachedResultName": "processed_mails",
+          "mode": "id",
+          "value": "vgRGdmoyMQvu195t"
+        },
+        "operation": "insert",
+        "options": {
+          "optimizeBulk": true
+        },
+        "resource": "row"
+      },
+      "position": [
+        2420,
+        720
+      ],
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1
+    },
+    {
+      "id": "2f4f212f-9271-4dda-af7e-3961d03290d6",
+      "name": "Outlook: to fetch",
+      "parameters": {
+        "jsCode": "// Queue for Outlook: get message; batches retried after Graph throttling come back here with their attempt count\nreturn $input.all().map(i => ({ json: { id: i.json.id, attempt: i.json.attempt || 0 } }));\n",
+        "mode": "runOnceForAllItems"
+      },
+      "position": [
+        1540,
+        1040
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "id": "00e602d2-0aee-4b64-bf26-ebd9514a265b",
+      "name": "Outlook: check get",
+      "parameters": {
+        "jsCode": "// Graph throttling: if any request in this batch got 429/503/504, wait max(Retry-After, 60 s) and fetch the whole batch again\nconst RETRYABLE = [429, 503, 504];\nconst MAX_RETRIES = 5;\nconst sent = $('Outlook: to fetch').all().map(i => i.json);\nconst res = $input.all().map(i => i.json);\n\nconst throttled = res.filter(r => RETRYABLE.includes(r.statusCode));\nif (throttled.length) {\n  const attempt = Math.max(...sent.map(s => s.attempt || 0)) + 1;\n  if (attempt > MAX_RETRIES) throw new Error(`Graph still throttling after ${MAX_RETRIES} retries (HTTP ${throttled[0].statusCode})`);\n  const retryAfter = Math.max(60, ...throttled.map(r => Number(r.headers?.['retry-after']) || 0));\n  return sent.map(s => ({ json: { id: s.id, attempt, retryAfter, throttled: true } }));\n}\n\nconst failed = res.find(r => r.statusCode >= 400);\nif (failed) throw new Error(`Outlook: get message failed with HTTP ${failed.statusCode}: ${JSON.stringify(failed.body?.error ?? failed.body).slice(0, 300)}`);\nreturn res.map(r => ({ json: r.body }));\n",
+        "mode": "runOnceForAllItems"
+      },
+      "position": [
+        1760,
+        1040
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "id": "1793a186-9f7f-41b5-b24a-338a27943b8e",
+      "name": "Outlook: throttled?",
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "c-throttled",
+              "leftValue": "={{ $json.throttled }}",
+              "operator": {
+                "operation": "true",
+                "singleValue": true,
+                "type": "boolean"
+              },
+              "rightValue": true
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          }
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "position": [
+        1980,
+        1040
+      ],
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2
+    },
+    {
+      "id": "a77a842d-f3f4-47d4-a60f-a86ffb75d197",
+      "name": "Wait (throttle get)",
+      "parameters": {
+        "amount": "={{ $json.retryAfter }}",
+        "resume": "timeInterval",
+        "unit": "seconds"
+      },
+      "position": [
+        2200,
+        1040
+      ],
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "webhookId": "0b1b4e5d-c4d4-49b8-b1cf-2ac99bef349e"
+    },
+    {
+      "id": "507dcb46-653a-4f00-855f-216075f656b1",
+      "name": "Outlook: check set",
+      "parameters": {
+        "jsCode": "// Graph throttling: retry only the throttled PATCHes after max(Retry-After, 60 s); other errors stop the run\nconst RETRYABLE = [429, 503, 504];\nconst MAX_RETRIES = 5;\nconst sent = $('Outlook: mails to categorize').all().map(i => i.json);\n\nconst retry = [];\n$input.all().forEach((i, k) => {\n  const r = i.json;\n  if (RETRYABLE.includes(r.statusCode)) {\n    retry.push({ ...sent[k], attempt: (sent[k].attempt || 0) + 1, retryAfter: Number(r.headers?.['retry-after']) || 0 });\n  } else if (r.statusCode >= 400) {\n    throw new Error(`Outlook: set category failed with HTTP ${r.statusCode}: ${JSON.stringify(r.body?.error ?? r.body).slice(0, 300)}`);\n  }\n});\nif (retry.some(r => r.attempt > MAX_RETRIES)) throw new Error(`Graph still throttling after ${MAX_RETRIES} retries (set category)`);\n\nconst retryAfter = Math.max(60, ...retry.map(r => r.retryAfter));\nreturn retry.map(r => ({ json: { ...r, retryAfter } }));\n",
+        "mode": "runOnceForAllItems"
+      },
+      "position": [
+        2640,
+        460
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "id": "d1ee4a7f-e26c-48fa-8256-f0684f32f79e",
+      "name": "Wait (throttle set)",
+      "parameters": {
+        "amount": "={{ $json.retryAfter }}",
+        "resume": "timeInterval",
+        "unit": "seconds"
+      },
+      "position": [
+        2860,
+        460
+      ],
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "webhookId": "176aeb1a-c8c5-4506-9f38-2c905a37ba5b"
+    }
+  ],
+  "settings": {
+    "availableInMCP": true,
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": true
+  },
+  "tags": []
+}
