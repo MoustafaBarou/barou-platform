@@ -36,7 +36,7 @@ Besides these VMs, Proxmox holds only the stopped Cloud-Init template 9000. Reti
 
 ## Capacity
 
-The four running VMs above have 10,752 MiB (10.5 GiB) of configured RAM in total, on a host with about 15.4 GiB usable memory. Proxmox itself also requires memory. Configured allocation is not the same as measured host usage or available memory.
+The five running VMs (the four above plus `detective-ops-01` with 1,536 MiB) have 12,288 MiB (12.0 GiB) of configured RAM in total, on a host with about 15.4 GiB usable memory. Proxmox itself also requires memory. Configured allocation is not the same as measured host usage or available memory.
 
 Removing Gitea and Jenkins removed 5120 MiB (5 GiB) of configured allocation. Retiring `ubuntu-tf-01` and `gitlab-runner-01` in October 2026 removed another 4096 MiB. Take fresh measurements before sizing any new VM; host memory is the limiting resource.
 
@@ -73,7 +73,7 @@ The current provider constraint is `bpg/proxmox ~> 0.111`; Terraform is constrai
 
 The provider currently uses `insecure = true`, disabling API certificate verification. This is an existing lab exception, not a production trust model.
 
-The current state lists `mgmt-01` and both Kubernetes VMs. Preserve module/resource addresses when refactoring unless a reviewed migration records the change. Removing a managed VM from the map can propose its destruction; always inspect the plan.
+The current state lists `mgmt-01`, both Kubernetes VMs and `detective-ops-01`. Preserve module/resource addresses when refactoring unless a reviewed migration records the change. Removing a managed VM from the map can propose its destruction; always inspect the plan.
 
 From the repository root:
 
