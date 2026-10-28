@@ -1,13 +1,17 @@
-proxmox_node_name = "pve"
-template_vm_id    = 9000
+# Optional overrides for infrastructure/proxmox.
+# Copy to terraform.tfvars (gitignored) only when a value must differ from the
+# defaults in variables.tf. Every line is commented out, so copying this file
+# unchanged changes nothing.
+#
+# VMs are declared in the virtual_machines default in variables.tf. Setting
+# virtual_machines here replaces the whole map, which would plan to destroy
+# every VM you leave out; change VMs in variables.tf instead.
+#
+# Provider authentication comes from PROXMOX_VE_API_TOKEN, never from this file.
 
-vm_id          = 103
-vm_name        = "ubuntu-tf-01"
-vm_description = "Ubuntu VM managed by Terraform"
-
-cpu_cores = 2
-memory_mb = 2048
-
-network_bridge    = "vmbr0"
-datastore_id      = "local-lvm"
-cloud_init_username = "moustafa"
+# proxmox_node_name   = "pve"
+# template_vm_id      = 9000
+# network_bridge      = "vmbr0"
+# datastore_id        = "local-lvm"
+# cloud_init_username = "moustafa"
+# ssh_public_key_path = "~/.ssh/id_ed25519.pub"
