@@ -66,7 +66,7 @@ See [Infrastructure Overview](docs/infrastructure-overview.md) for VM IDs, addre
 
 Proxmox Terraform state is local and excluded from Git. Azure uses its own Azure Storage backend; its state and workload identity work are separate from the Proxmox backend. Do not treat all Terraform roots as sharing one state configuration.
 
-The Proxmox VM module retains the recorded state migration in `moved.tf`. Refactoring resource addresses must preserve existing infrastructure unless replacement is intentional and reviewed.
+The one-time state migration to the Proxmox VM module is complete and its `moved.tf` has been removed. Refactoring resource addresses must preserve existing infrastructure unless replacement is intentional and reviewed.
 
 Ansible roles manage the Linux baseline, security, Docker where required, Tailscale routing, internal DNS, Caddy, and RKE2. The Gitea and Jenkins roles and playbooks have been removed. RKE2 nodes use containerd supplied by RKE2.
 

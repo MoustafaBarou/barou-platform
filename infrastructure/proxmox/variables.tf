@@ -73,5 +73,14 @@ variable "virtual_machines" {
       ipv4_address = "192.168.178.111/24"
       ipv4_gateway = "192.168.178.1"
     }
+
+    detective-ops-01 = {
+      vm_id        = 112
+      description  = "Detective Ops service (Case 001) in test mode"
+      cpu_cores    = 2
+      memory_mb    = 1536
+      ipv4_address = "192.168.178.112/24"
+      ipv4_gateway = "192.168.178.1"
+    }
   }
 }
