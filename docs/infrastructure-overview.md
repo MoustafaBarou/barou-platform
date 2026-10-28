@@ -30,6 +30,8 @@ The following inventory reflects the configuration and observations of 28 Octobe
 | 110 | `k8s-cp-01` | Static `192.168.178.110/24` | 2 | 3072 MiB | RKE2 control plane and etcd |
 | 111 | `k8s-worker-01` | Static `192.168.178.111/24` | 2 | 2048 MiB | RKE2 worker |
 
+detective-ops-01 – side project, beheer en runbook in privé-repo detective-ops
+
 Besides these VMs, Proxmox holds only the stopped Cloud-Init template 9000. Retired VMs: 104 (`gitea-01`) and 105 (`jenkins-01`); 103 (`ubuntu-tf-01`) and 107 (`gitlab-runner-01`), destroyed through Terraform on 2026-10-28 to free host capacity; and the stopped, unmanaged 101 (`ubuntu-auto-01`) and 102 (`ubuntu-auto-02`), deleted through the Proxmox API on 2026-10-28.
 
 ## Capacity
@@ -62,7 +64,6 @@ sudo vgs
 | Root configuration | `infrastructure/proxmox/` |
 | VM definitions | `infrastructure/proxmox/variables.tf`, `virtual_machines` |
 | Reusable module | `infrastructure/proxmox/modules/ubuntu-vm/` |
-| Recorded module migration | `infrastructure/proxmox/moved.tf` |
 | API endpoint | `https://192.168.178.10:8006/` |
 | State | Local for the Proxmox root; excluded from Git |
 

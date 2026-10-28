@@ -15,8 +15,10 @@ resource "proxmox_virtual_environment_vm" "this" {
     type  = "host"
   }
 
+  # Fixed memory: ballooning disabled.
   memory {
     dedicated = var.memory_mb
+    floating  = 0
   }
 
   network_device {
@@ -47,5 +49,6 @@ resource "proxmox_virtual_environment_vm" "this" {
     enabled = true
   }
 
+  on_boot = true
   started = true
 }
