@@ -47,13 +47,6 @@ variable "virtual_machines" {
   }))
 
   default = {
-    ubuntu-tf-01 = {
-      vm_id       = 103
-      description = "Terraform-managed Ubuntu automation target"
-      cpu_cores   = 2
-      memory_mb   = 2048
-    }
-
     gitlab-runner-01 = {
       vm_id        = 107
       description  = "GitLab CI runner for homelab validation jobs"
