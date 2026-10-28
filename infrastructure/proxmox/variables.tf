@@ -44,6 +44,7 @@ variable "virtual_machines" {
     memory_mb    = number
     ipv4_address = optional(string, "dhcp")
     ipv4_gateway = optional(string)
+    dns_servers  = optional(list(string))
   }))
 
   default = {

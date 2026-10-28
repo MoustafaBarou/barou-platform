@@ -64,3 +64,9 @@ variable "ipv4_gateway" {
   type        = string
   default     = null
 }
+
+variable "dns_servers" {
+  description = "DNS servers configured through Cloud-Init. Null keeps the resolvers inherited from the Proxmox host."
+  type        = list(string)
+  default     = null
+}

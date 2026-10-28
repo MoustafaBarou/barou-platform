@@ -19,4 +19,5 @@ module "ubuntu_vm" {
 
   ipv4_address = try(each.value.ipv4_address, "dhcp")
   ipv4_gateway = try(each.value.ipv4_gateway, null)
+  dns_servers  = try(each.value.dns_servers, null)
 }

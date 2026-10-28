@@ -29,6 +29,16 @@ resource "proxmox_virtual_environment_vm" "this" {
   initialization {
     datastore_id = var.datastore_id
 
+    # Only set when dns_servers is given; otherwise the guest keeps inheriting
+    # the Proxmox host's resolvers (current behaviour of existing VMs).
+    dynamic "dns" {
+      for_each = var.dns_servers == null ? [] : [var.dns_servers]
+
+      content {
+        servers = dns.value
+      }
+    }
+
     ip_config {
       ipv4 {
         address = var.ipv4_address
