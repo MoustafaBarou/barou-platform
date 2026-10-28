@@ -38,7 +38,7 @@ pve
           | Clone template 9000
           v
 Ubuntu Virtual Machines
-mgmt-01, gitlab-runner-01, k8s-cp-01, k8s-worker-01
+mgmt-01, k8s-cp-01, k8s-worker-01
 ```
 
 ## Technology Stack

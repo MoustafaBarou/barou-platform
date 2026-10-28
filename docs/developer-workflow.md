@@ -1,6 +1,6 @@
 # Developer Workflow
 
-Development takes place through VS Code Remote SSH on `ubuntu-dev-01`. GitHub hosts the public repository and validation checks. GitLab.com hosts the private project and uses the homelab runner. The platform submission task coordinates both review workflows and synchronizes their `main` branches.
+Development takes place through VS Code Remote SSH on `ubuntu-dev-01`. GitHub hosts the public repository and validation checks. GitLab.com hosts the private project and runs validation on GitLab.com instance runners. The platform submission task coordinates both review workflows and synchronizes their `main` branches.
 
 ## Working Environment
 
@@ -14,7 +14,7 @@ Development takes place through VS Code Remote SSH on `ubuntu-dev-01`. GitHub ho
 | kubectl | Inspect and manage the Kubernetes cluster |
 | SSH agent / keychain | Reuse an unlocked passphrase-protected SSH key |
 
-The repository is `~/terraform/barou-platform`. The development VM's current LAN address is `192.168.178.101`; its Tailscale address is `100.111.185.114`.
+The repository is `~/terraform/barou-platform`. The development VM uses DHCP and has been observed on both `192.168.178.101` and `192.168.178.102` (currently `.102`); the Kubernetes API firewall allows both. Its Tailscale address is `100.111.185.114`.
 
 Run repository commands from the repository root unless instructed otherwise. Run Ansible commands from `configuration/ansible` so its `ansible.cfg`, inventory and role paths are selected.
 
@@ -181,11 +181,11 @@ This alias lasts for the current shell unless added to shell configuration. An a
 
 ## Migration Status
 
-Gitea and Jenkins have been retired. GitLab.com and `gitlab-runner-01` are
-operational; the Docker smoke pipeline passed. GitHub Actions continues to
-provide Terraform and Ansible validation, and the Azure workflows remain in use.
+Gitea and Jenkins have been retired. GitLab.com is operational and runs
+Terraform, Ansible and coordinator validation on GitLab.com instance runners;
+the homelab runner `gitlab-runner-01` was retired in October 2026. GitHub
+Actions and the Azure workflows remain in use.
 
 `origin` points to GitHub and `gitlab` points to GitLab.com. The submission task
-keeps their main histories aligned. GitLab Terraform and Ansible validation jobs
-are a separate planned improvement. Kubernetes and the other lab services stay
+keeps their main histories aligned. Kubernetes and the other lab services stay
 running throughout repository submission.

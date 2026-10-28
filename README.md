@@ -9,7 +9,7 @@ A self-hosted DevOps learning platform built with Proxmox VE, Terraform, Ansible
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-RKE2-326CE5?logo=kubernetes&logoColor=white)
 ![Azure DevOps](https://img.shields.io/badge/Azure_DevOps-Pipelines-0078D7?logo=azuredevops&logoColor=white)
 
-> Status: September 2026. Gitea and Jenkins have been retired. GitLab and GitLab Runner are the next delivery-platform phase and are not deployed yet. Kubernetes and the remaining lab services must stay running during that transition.
+> Status: October 2026. Gitea and Jenkins have been retired. GitLab.com hosts the private mirror and runs validation pipelines on GitLab.com instance runners; the homelab runner VM has been retired to free host capacity.
 
 This is a learning and portfolio environment on one physical host. It does not provide production availability or a production SLA.
 
@@ -82,7 +82,7 @@ See [Kubernetes Platform](docs/architecture/kubernetes-platform.md) and [Homepag
 
 Internal services use `lab.barouconsulting.nl`. DNS resolves the application names to `mgmt-01` at `192.168.178.106`. Caddy terminates HTTPS and routes Proxmox directly to its API/web endpoint, and Rancher and Homepage through the Kubernetes ingress at `192.168.178.111:80`.
 
-Remote administration uses Tailscale and VS Code Remote SSH into `ubuntu-dev-01`. Its current LAN address is `192.168.178.101`. The management gateway and Kubernetes nodes have static LAN addresses configured through Terraform.
+Remote administration uses Tailscale and VS Code Remote SSH into `ubuntu-dev-01`. It uses DHCP and has been observed on both `192.168.178.101` and `192.168.178.102` (currently `.102`); the Kubernetes API firewall allows both. The management gateway and Kubernetes nodes have static LAN addresses configured through Terraform.
 
 CoreDNS forwards public queries to `1.1.1.1` and `9.9.9.9`, and queries for the internal zone to `mgmt-01`. Caddy's public root certificate must be trusted by administrator clients; its CA private key must remain protected.
 
@@ -143,13 +143,10 @@ The physical host, management gateway, control plane, etcd member and worker are
 
 The next steps are:
 
-1. Complete review and validation of the Gitea/Jenkins retirement.
-2. Select and size the GitLab and Runner deployment while preserving the running cluster and remaining services.
-3. Reuse the existing validation script in GitLab CI/CD before introducing deployment jobs.
-4. Add controlled Terraform plan/apply workflows and finish environment-specific state and identity controls.
-5. Introduce Argo CD, persistent storage, backup testing and stronger secret management.
-6. Add Prometheus, Grafana and Loki as capacity permits.
-7. Develop the Azure environment and compare RKE2 with AKS.
+1. Add controlled Terraform plan/apply workflows and finish environment-specific state and identity controls.
+2. Introduce Argo CD, persistent storage, backup testing and stronger secret management.
+3. Add Prometheus, Grafana and Loki as capacity permits.
+4. Develop the Azure environment and compare RKE2 with AKS.
 
 ## License
 
