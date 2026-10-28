@@ -26,12 +26,11 @@ The following inventory reflects the recorded September 2026 configuration and o
 | VM ID | Host | LAN address | vCPU | Memory | Responsibility |
 |---:|---|---|---:|---:|---|
 | 100 | `ubuntu-dev-01` | Observed `192.168.178.101` | 2 | 4096 MiB | Administration and automation; outside the current Proxmox Terraform VM map |
-| 103 | `ubuntu-tf-01` | Inventory target `192.168.178.103`; DHCP | 2 | 2048 MiB | Terraform-managed automation target |
 | 106 | `mgmt-01` | Static `192.168.178.106/24` | 1 | 1536 MiB | DNS, Caddy and Tailscale subnet router |
 | 110 | `k8s-cp-01` | Static `192.168.178.110/24` | 2 | 3072 MiB | RKE2 control plane and etcd |
 | 111 | `k8s-worker-01` | Static `192.168.178.111/24` | 2 | 2048 MiB | RKE2 worker |
 
-The last recorded Proxmox inventory also showed stopped VMs 101 (`ubuntu-auto-01`) and 102 (`ubuntu-auto-02`), plus stopped Cloud-Init template 9000. VM 102 is not the current development VM. VMs 104 (`gitea-01`) and 105 (`jenkins-01`) have been removed from the platform.
+The last recorded Proxmox inventory also showed stopped VMs 101 (`ubuntu-auto-01`) and 102 (`ubuntu-auto-02`), plus stopped Cloud-Init template 9000. VM 102 is not the current development VM. VMs 104 (`gitea-01`) and 105 (`jenkins-01`) have been removed from the platform. VM 103 (`ubuntu-tf-01`), an idle automation target, was destroyed through Terraform on 2026-10-28 to free host capacity.
 
 ## Capacity
 
@@ -73,7 +72,7 @@ The current provider constraint is `bpg/proxmox ~> 0.111`; Terraform is constrai
 
 The provider currently uses `insecure = true`, disabling API certificate verification. This is an existing lab exception, not a production trust model.
 
-The current state lists `ubuntu-tf-01`, `mgmt-01` and both Kubernetes VMs. Preserve module/resource addresses when refactoring unless a reviewed migration records the change. Removing a managed VM from the map can propose its destruction; always inspect the plan.
+The current state lists `mgmt-01`, `gitlab-runner-01` and both Kubernetes VMs. Preserve module/resource addresses when refactoring unless a reviewed migration records the change. Removing a managed VM from the map can propose its destruction; always inspect the plan.
 
 From the repository root:
 
@@ -89,7 +88,7 @@ Azure Terraform roots under `infrastructure/azure/` use their own backend and id
 
 ## Network Addressing
 
-`mgmt-01` and both Kubernetes nodes have static addresses configured through Terraform with gateway `192.168.178.1`. `ubuntu-tf-01` still uses DHCP in Terraform; `.103` is the Ansible inventory target, so verify the lease when diagnosing reachability.
+`mgmt-01` and both Kubernetes nodes have static addresses configured through Terraform with gateway `192.168.178.1`.
 
 Coordinate static addresses with DHCP exclusions or reservations on the LAN router. Router configuration is outside this Terraform and Ansible configuration and still requires verification.
 
@@ -101,7 +100,7 @@ The configuration lives in `configuration/ansible/`, using `inventories/homelab/
 
 | Inventory group | Current targets |
 |---|---|
-| `ubuntu_servers` | `ubuntu-tf-01`, `mgmt-01` |
+| `ubuntu_servers` | `mgmt-01`, `gitlab-runner-01` |
 | `mgmt_servers` | `mgmt-01` |
 | `k8s_control_plane` | `k8s-cp-01` |
 | `k8s_workers` | `k8s-worker-01` |

@@ -48,7 +48,6 @@ The diagram represents the current platform. GitLab, Argo CD and the planned obs
 |---|---|---|
 | HP EliteDesk / `pve` | Physical host and Proxmox VE | Proxmox administration |
 | `ubuntu-dev-01` | VS Code Remote SSH and automation entry point | Git, Terraform, Ansible and kubectl |
-| `ubuntu-tf-01` | Ubuntu automation target | Terraform and Ansible |
 | `mgmt-01` | DNS, Caddy and Tailscale subnet routing | Terraform and Ansible |
 | `k8s-cp-01` | RKE2 control plane and embedded etcd | Terraform and Ansible |
 | `k8s-worker-01` | RKE2 worker | Terraform and Ansible |
